@@ -14,6 +14,8 @@ public partial class BaseEncounter : Node2D
     private static readonly Color TileA = new(0.15f, 0.15f, 0.20f);
     private static readonly Color TileB = new(0.12f, 0.12f, 0.17f);
 
+    private PackedScene _fireboltScene;
+
     // ── Deck / queue ─────────────────────────────────────────────────────────
 
     private List<CardData>  _deckCards  = new();
@@ -23,6 +25,10 @@ public partial class BaseEncounter : Node2D
 
     private CardData[]  _slotCards     = new CardData[HudSlots];
     private Panel[]     _hudPanels     = new Panel[HudSlots];
+    private Button[]    _actionButtons      = new Button[4];
+    private StyleBoxFlat _actionStyleNormal;
+    private StyleBoxFlat _actionStyleHover;
+    private StyleBoxFlat _actionStylePressed;
     private ColorRect   _progressFill;
     private double      _elapsed       = 0.0;
 
@@ -30,6 +36,8 @@ public partial class BaseEncounter : Node2D
 
     public override void _Ready()
     {
+        _fireboltScene = GD.Load<PackedScene>("res://scenes/Firebolt.tscn");
+
         DeckStore.EnsureCardsLoaded();
         LoadDeckCards();
 
@@ -95,6 +103,40 @@ public partial class BaseEncounter : Node2D
         return _cardQueue.Count > 0 ? _cardQueue.Dequeue() : null;
     }
 
+    // ── Input ─────────────────────────────────────────────────────────────────
+
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is not InputEventKey key || !key.Pressed || key.Echo) return;
+
+        int idx = key.Keycode switch
+        {
+            Key.Key1 => 0,
+            Key.Key2 => 1,
+            Key.Key3 => 2,
+            Key.Key4 => 3,
+            _        => -1,
+        };
+
+        if (key.Keycode == Key.Escape)
+        {
+            GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+            return;
+        }
+
+        if (idx < 0) return;
+
+        var btn = _actionButtons[idx];
+        btn.AddThemeStyleboxOverride("normal", _actionStylePressed);
+        btn.AddThemeStyleboxOverride("hover",  _actionStylePressed);
+        GetTree().CreateTimer(0.12).Timeout += () =>
+        {
+            btn.AddThemeStyleboxOverride("normal", _actionStyleNormal);
+            btn.AddThemeStyleboxOverride("hover",  _actionStyleHover);
+        };
+        btn.EmitSignal(BaseButton.SignalName.Pressed);
+    }
+
     // ── Per-frame update ──────────────────────────────────────────────────────
 
     public override void _Process(double delta)
@@ -119,7 +161,7 @@ public partial class BaseEncounter : Node2D
 
     private void PlayCurrentCard()
     {
-        // Card effect placeholder — currently no gameplay action.
+        var played = _slotCards[0];
 
         // Shift slots 1-3 into slots 0-2.
         for (int i = 0; i < HudSlots - 1; i++)
@@ -134,6 +176,26 @@ public partial class BaseEncounter : Node2D
 
         _elapsed = 0.0;
         _progressFill.Size = new Vector2(0f, _progressFill.Size.Y);
+
+        SpawnCardEffect(played);
+    }
+
+    private void SpawnCardEffect(CardData card)
+    {
+        if (card == null) return;
+        if (card.Id == "firebolt") SpawnFirebolt();
+    }
+
+    private void SpawnFirebolt()
+    {
+        var player   = GetNode<Node2D>("Player");
+        var origin   = player.GlobalPosition;
+        var mousePos = GetGlobalMousePosition();
+        var dir      = (mousePos - origin).Normalized();
+
+        var bolt = _fireboltScene.Instantiate<Firebolt>();
+        AddChild(bolt);
+        bolt.Init(dir, origin);
     }
 
     // ── HUD construction ──────────────────────────────────────────────────────
@@ -141,8 +203,8 @@ public partial class BaseEncounter : Node2D
     private void BuildCardHud(CanvasLayer hud)
     {
         int totalW = HudSlots * CardW + (HudSlots - 1) * Gap;
-        int startX = (900 - totalW) / 2;
-        int y      = 722;
+        int startX = (900 - totalW) / 2 + 200;
+        int y      = 780;
 
         for (int i = 0; i < HudSlots; i++)
         {
@@ -171,6 +233,58 @@ public partial class BaseEncounter : Node2D
         _progressFill.Color        = new Color(0.30f, 0.65f, 1.00f);
         _progressFill.MouseFilter  = Control.MouseFilterEnum.Ignore;
         hud.AddChild(_progressFill);
+
+        BuildActionButtons(hud, y);
+    }
+
+    private void BuildActionButtons(CanvasLayer hud, int y)
+    {
+        const int StartX = 80;
+
+        _actionStyleNormal = new StyleBoxFlat();
+        _actionStyleNormal.BgColor     = new Color(0.18f, 0.18f, 0.22f);
+        _actionStyleNormal.BorderColor = new Color(0.38f, 0.38f, 0.48f);
+        _actionStyleNormal.SetBorderWidthAll(1);
+        _actionStyleNormal.CornerRadiusTopLeft = _actionStyleNormal.CornerRadiusTopRight =
+        _actionStyleNormal.CornerRadiusBottomLeft = _actionStyleNormal.CornerRadiusBottomRight = 3;
+
+        _actionStyleHover = new StyleBoxFlat();
+        _actionStyleHover.BgColor     = new Color(0.26f, 0.26f, 0.32f);
+        _actionStyleHover.BorderColor = new Color(0.55f, 0.55f, 0.68f);
+        _actionStyleHover.SetBorderWidthAll(1);
+        _actionStyleHover.CornerRadiusTopLeft = _actionStyleHover.CornerRadiusTopRight =
+        _actionStyleHover.CornerRadiusBottomLeft = _actionStyleHover.CornerRadiusBottomRight = 3;
+
+        _actionStylePressed = new StyleBoxFlat();
+        _actionStylePressed.BgColor     = new Color(0.10f, 0.10f, 0.14f);
+        _actionStylePressed.BorderColor = new Color(0.60f, 0.60f, 0.75f);
+        _actionStylePressed.SetBorderWidthAll(1);
+        _actionStylePressed.CornerRadiusTopLeft = _actionStylePressed.CornerRadiusTopRight =
+        _actionStylePressed.CornerRadiusBottomLeft = _actionStylePressed.CornerRadiusBottomRight = 3;
+
+        for (int i = 0; i < 4; i++)
+        {
+            var btn = new Button();
+            btn.Position = new Vector2(StartX + i * (CardW + Gap), y);
+            btn.Size     = new Vector2(CardW, CardH);
+            btn.Text     = "";
+            btn.AddThemeStyleboxOverride("normal",  _actionStyleNormal);
+            btn.AddThemeStyleboxOverride("hover",   _actionStyleHover);
+            btn.AddThemeStyleboxOverride("pressed", _actionStylePressed);
+            btn.AddThemeStyleboxOverride("focus",   _actionStyleNormal);
+
+            var num = new Label();
+            num.Text        = (i + 1).ToString();
+            num.Position    = new Vector2(CardW - 14, CardH - 17);
+            num.Size        = new Vector2(12, 14);
+            num.AddThemeColorOverride("font_color",   new Color(0.55f, 0.55f, 0.65f));
+            num.AddThemeFontSizeOverride("font_size", 10);
+            num.MouseFilter = Control.MouseFilterEnum.Ignore;
+            btn.AddChild(num);
+
+            _actionButtons[i] = btn;
+            hud.AddChild(btn);
+        }
     }
 
     private Panel CreateSlotPanel(int x, int y)

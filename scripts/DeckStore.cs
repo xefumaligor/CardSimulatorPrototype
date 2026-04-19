@@ -9,6 +9,7 @@ public static class DeckStore
     {
         public string Id      { get; set; }
         public string Name    { get; set; }
+        public string Text    { get; set; }
         public float  R       { get; set; }
         public float  G       { get; set; }
         public float  B       { get; set; }
@@ -43,7 +44,7 @@ public static class DeckStore
             var defs = JsonSerializer.Deserialize<List<CardDef>>(file.GetAsText());
             if (defs == null) return;
             foreach (var d in defs)
-                AllCards.Add(new CardData(d.Id, d.Name, new Color(d.R, d.G, d.B), d.UseTime));
+                AllCards.Add(new CardData(d.Id, d.Name, d.Text ?? "", new Color(d.R, d.G, d.B), d.UseTime));
         }
         catch { }
     }

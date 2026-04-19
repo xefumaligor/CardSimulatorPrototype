@@ -5,13 +5,15 @@ public class CardData
 {
     public string Id      { get; set; }
     public string Name    { get; set; }
+    public string Text    { get; set; }
     public Color  Color   { get; set; }
     public float  UseTime { get; set; }
 
-    public CardData(string id, string name, Color color, float useTime = 1.0f)
+    public CardData(string id, string name, string text, Color color, float useTime = 1.0f)
     {
         Id      = id;
         Name    = name;
+        Text    = text;
         Color   = color;
         UseTime = useTime;
     }

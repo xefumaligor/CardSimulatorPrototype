@@ -23,13 +23,10 @@ text = "Select Mode"
 horizontal_alignment = 1
 
 [node name="BtnWaves" type="Button" parent="VBoxContainer"]
-text = "Waves"
+text = "Start Run"
 
-[node name="BtnSwarm" type="Button" parent="VBoxContainer"]
-text = "Swarm"
-
-[node name="BtnBoss" type="Button" parent="VBoxContainer"]
-text = "Boss"
+[node name="BtnTestEncounter" type="Button" parent="VBoxContainer"]
+text = "Test Encounter"
 
 [node name="BtnDeckManagement" type="Button" parent="VBoxContainer"]
 text = "Deck Management"
