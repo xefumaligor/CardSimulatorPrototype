@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://byj3la0y3bqw0"]
+
+[ext_resource type="Script" path="res://scripts/DeckListScreen.cs" id="1_decklist"]
+
+[node name="DeckListScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_decklist")

@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.import
+!icon.svg.import
+
+# .NET build output
+.mono/
+bin/
+obj/
+*.user
+
+# Godot export
+export/
+
+# OS
+.DS_Store
+Thumbs.db

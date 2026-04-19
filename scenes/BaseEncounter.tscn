@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://baseencounter"]
+
+[ext_resource type="Script" path="res://scripts/BaseEncounter.cs" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://player" path="res://scenes/Player.tscn" id="2_player"]
+
+[sub_resource type="RectangleShape2D" id="Shape_Top"]
+size = Vector2(700, 20)
+
+[sub_resource type="RectangleShape2D" id="Shape_Bottom"]
+size = Vector2(700, 20)
+
+[sub_resource type="RectangleShape2D" id="Shape_Left"]
+size = Vector2(20, 700)
+
+[sub_resource type="RectangleShape2D" id="Shape_Right"]
+size = Vector2(20, 700)
+
+[node name="BaseEncounter" type="Node2D"]
+script = ExtResource("1_base")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="Room" type="Node2D" parent="."]
+position = Vector2(0, -90)
+
+[node name="Wall_Top" type="StaticBody2D" parent="Room"]
+position = Vector2(0, -350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Room/Wall_Top"]
+shape = SubResource("Shape_Top")
+
+[node name="Polygon2D" type="Polygon2D" parent="Room/Wall_Top"]
+polygon = PackedVector2Array(-350, -10, 350, -10, 350, 10, -350, 10)
+color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="Wall_Bottom" type="StaticBody2D" parent="Room"]
+position = Vector2(0, 350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Room/Wall_Bottom"]
+shape = SubResource("Shape_Bottom")
+
+[node name="Polygon2D" type="Polygon2D" parent="Room/Wall_Bottom"]
+polygon = PackedVector2Array(-350, -10, 350, -10, 350, 10, -350, 10)
+color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="Wall_Left" type="StaticBody2D" parent="Room"]
+position = Vector2(-350, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Room/Wall_Left"]
+shape = SubResource("Shape_Left")
+
+[node name="Polygon2D" type="Polygon2D" parent="Room/Wall_Left"]
+polygon = PackedVector2Array(-10, -350, 10, -350, 10, 350, -10, 350)
+color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="Wall_Right" type="StaticBody2D" parent="Room"]
+position = Vector2(350, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Room/Wall_Right"]
+shape = SubResource("Shape_Right")
+
+[node name="Polygon2D" type="Polygon2D" parent="Room/Wall_Right"]
+polygon = PackedVector2Array(-10, -350, 10, -350, 10, 350, -10, 350)
+color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(0, 0)

@@ -1,0 +1,22 @@
+[
+  {"Id": "card_00", "Name": "Fire",      "R": 0.90, "G": 0.30, "B": 0.20, "UseTime": 1.0},
+  {"Id": "card_01", "Name": "Ice",       "R": 0.40, "G": 0.70, "B": 0.95, "UseTime": 1.0},
+  {"Id": "card_02", "Name": "Wind",      "R": 0.60, "G": 0.90, "B": 0.60, "UseTime": 1.0},
+  {"Id": "card_03", "Name": "Earth",     "R": 0.65, "G": 0.45, "B": 0.25, "UseTime": 1.0},
+  {"Id": "card_04", "Name": "Lightning", "R": 0.95, "G": 0.85, "B": 0.20, "UseTime": 1.0},
+  {"Id": "card_05", "Name": "Shadow",    "R": 0.35, "G": 0.25, "B": 0.45, "UseTime": 1.0},
+  {"Id": "card_06", "Name": "Light",     "R": 0.95, "G": 0.95, "B": 0.70, "UseTime": 1.0},
+  {"Id": "card_07", "Name": "Poison",    "R": 0.40, "G": 0.75, "B": 0.30, "UseTime": 1.0},
+  {"Id": "card_08", "Name": "Shield",    "R": 0.50, "G": 0.55, "B": 0.70, "UseTime": 1.0},
+  {"Id": "card_09", "Name": "Sword",     "R": 0.75, "G": 0.30, "B": 0.30, "UseTime": 1.0},
+  {"Id": "card_10", "Name": "Arrow",     "R": 0.70, "G": 0.55, "B": 0.30, "UseTime": 1.0},
+  {"Id": "card_11", "Name": "Heal",      "R": 0.40, "G": 0.80, "B": 0.55, "UseTime": 1.0},
+  {"Id": "card_12", "Name": "Drain",     "R": 0.55, "G": 0.25, "B": 0.55, "UseTime": 1.0},
+  {"Id": "card_13", "Name": "Curse",     "R": 0.30, "G": 0.20, "B": 0.35, "UseTime": 1.0},
+  {"Id": "card_14", "Name": "Bless",     "R": 0.90, "G": 0.80, "B": 0.50, "UseTime": 1.0},
+  {"Id": "card_15", "Name": "Speed",     "R": 0.30, "G": 0.75, "B": 0.80, "UseTime": 1.0},
+  {"Id": "card_16", "Name": "Power",     "R": 0.85, "G": 0.40, "B": 0.25, "UseTime": 1.0},
+  {"Id": "card_17", "Name": "Guard",     "R": 0.45, "G": 0.50, "B": 0.65, "UseTime": 1.0},
+  {"Id": "card_18", "Name": "Strike",    "R": 0.80, "G": 0.25, "B": 0.35, "UseTime": 1.0},
+  {"Id": "card_19", "Name": "Blast",     "R": 0.95, "G": 0.60, "B": 0.25, "UseTime": 1.0}
+]
