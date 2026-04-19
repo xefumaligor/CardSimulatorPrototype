@@ -45,24 +45,20 @@ public partial class DeckManagement : Control
 		Array.Clear(_deckSlots,      0, _deckSlots.Length);
 
 		// Populate deck slots from the saved deck (if editing an existing one).
-		var usedIds = new HashSet<string>();
 		if (DeckStore.EditingIndex >= 0 && DeckStore.EditingIndex < DeckStore.Decks.Count)
 		{
 			foreach (var entry in DeckStore.Decks[DeckStore.EditingIndex].Slots)
 			{
 				var card = DeckStore.AllCards.Find(c => c.Id == entry.CardId);
 				if (card != null && entry.Slot < _deckSlots.Length)
-				{
 					_deckSlots[entry.Slot] = card;
-					usedIds.Add(card.Id);
-				}
 			}
 		}
 
-		// Inventory gets every card not already placed in the deck.
+		// Cards section always shows every available card.
 		int invIdx = 0;
 		foreach (var card in DeckStore.AllCards)
-			if (!usedIds.Contains(card.Id) && invIdx < _inventorySlots.Length)
+			if (invIdx < _inventorySlots.Length)
 				_inventorySlots[invIdx++] = card;
 	}
 
@@ -90,12 +86,12 @@ public partial class DeckManagement : Control
 		AddChild(_deckNameInput);
 		y += 42;
 
-		y = AddSectionLabel("Inventory", marginX, y);
-		y = AddGrid(_inventorySlots, _inventoryPanels, "inventory", marginX, y);
+		y = AddSectionLabel("Cards", marginX, y);
+		y = AddGrid(_inventorySlots, _inventoryPanels, false, marginX, y);
 		y += 12;
 
 		y = AddSectionLabel("Deck", marginX, y);
-		y = AddGrid(_deckSlots, _deckPanels, "deck", marginX, y);
+		y = AddGrid(_deckSlots, _deckPanels, true, marginX, y);
 		y += 15;
 
 		AddButtons(marginX, y);
@@ -112,7 +108,7 @@ public partial class DeckManagement : Control
 		return y + 22;
 	}
 
-	private int AddGrid(CardData[] slots, Panel[] panels, string section, int marginX, int y)
+	private int AddGrid(CardData[] slots, Panel[] panels, bool isDeck, int marginX, int y)
 	{
 		for (int i = 0; i < Cols * Rows; i++)
 		{
@@ -124,7 +120,7 @@ public partial class DeckManagement : Control
 				CardW, CardH);
 
 			int capturedIndex = i;
-			panel.GuiInput += (InputEvent e) => OnSlotInput(e, section, capturedIndex);
+			panel.GuiInput += (InputEvent e) => OnSlotInput(e, isDeck, capturedIndex);
 			panels[i] = panel;
 			AddChild(panel);
 			UpdateSlotVisual(panel, slots[i]);
@@ -240,21 +236,47 @@ public partial class DeckManagement : Control
 				GetLocalMousePosition() - new Vector2(CardW / 2f, CardH / 2f);
 	}
 
-	private void OnSlotInput(InputEvent e, string section, int index)
+	private void OnSlotInput(InputEvent e, bool isDeck, int index)
 	{
-		if (e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
-			return;
+		if (e is not InputEventMouseButton mb || !mb.Pressed) return;
 
-		var slots  = section == "inventory" ? _inventorySlots : _deckSlots;
-		var panels = section == "inventory" ? _inventoryPanels : _deckPanels;
+		if (!isDeck)
+		{
+			// Cards section: left-click copies card to hand; right-click does nothing.
+			if (mb.ButtonIndex != MouseButton.Left) return;
+			if (_heldCard != null) return;
+			if (_inventorySlots[index] == null) return;
+
+			_heldCard                = _inventorySlots[index];
+			_heldCardBg.Color        = _heldCard.Color;
+			_heldCardLabel.Text      = _heldCard.Name;
+			_heldCardDisplay.Visible = true;
+			UpdateSaveButton();
+			return;
+		}
+
+		// ── Deck section ──────────────────────────────────────────────────────
+
+		if (mb.ButtonIndex == MouseButton.Right)
+		{
+			// Right-click: remove card and close the gap.
+			if (_deckSlots[index] == null) return;
+			_deckSlots[index] = null;
+			UpdateSlotVisual(_deckPanels[index], null);
+			ShiftDeckDown(index);
+			return;
+		}
+
+		if (mb.ButtonIndex != MouseButton.Left) return;
 
 		if (_heldCard == null)
 		{
-			if (slots[index] == null) return;
-
-			_heldCard    = slots[index];
-			slots[index] = null;
-			UpdateSlotVisual(panels[index], null);
+			// Pick up card from deck and close the gap.
+			if (_deckSlots[index] == null) return;
+			_heldCard         = _deckSlots[index];
+			_deckSlots[index] = null;
+			UpdateSlotVisual(_deckPanels[index], null);
+			ShiftDeckDown(index);
 
 			_heldCardBg.Color        = _heldCard.Color;
 			_heldCardLabel.Text      = _heldCard.Name;
@@ -263,22 +285,46 @@ public partial class DeckManagement : Control
 		}
 		else
 		{
-			var displaced = slots[index];
-			slots[index]  = _heldCard;
-			UpdateSlotVisual(panels[index], _heldCard);
-
-			_heldCard = displaced;
-
-			if (_heldCard == null)
+			if (_deckSlots[index] == null)
 			{
-				_heldCardDisplay.Visible = false;
-				UpdateSaveButton();
+				// Empty slot: place directly.
+				_deckSlots[index] = _heldCard;
+				UpdateSlotVisual(_deckPanels[index], _heldCard);
 			}
 			else
 			{
-				_heldCardBg.Color   = _heldCard.Color;
-				_heldCardLabel.Text = _heldCard.Name;
+				// Occupied slot: shift existing cards up to make room, then insert.
+				ShiftDeckUp(index);
+				_deckSlots[index] = _heldCard;
+				UpdateSlotVisual(_deckPanels[index], _heldCard);
 			}
+
+			_heldCard                = null;
+			_heldCardDisplay.Visible = false;
+			UpdateSaveButton();
+		}
+	}
+
+	// Closes the gap at fromIndex by pulling subsequent cards one slot back.
+	private void ShiftDeckDown(int fromIndex)
+	{
+		for (int i = fromIndex; i < _deckSlots.Length - 1; i++)
+		{
+			_deckSlots[i] = _deckSlots[i + 1];
+			UpdateSlotVisual(_deckPanels[i], _deckSlots[i]);
+		}
+		int last = _deckSlots.Length - 1;
+		_deckSlots[last] = null;
+		UpdateSlotVisual(_deckPanels[last], null);
+	}
+
+	// Makes room at fromIndex by pushing all subsequent cards one slot forward.
+	private void ShiftDeckUp(int fromIndex)
+	{
+		for (int i = _deckSlots.Length - 1; i > fromIndex; i--)
+		{
+			_deckSlots[i] = _deckSlots[i - 1];
+			UpdateSlotVisual(_deckPanels[i], _deckSlots[i]);
 		}
 	}
 
