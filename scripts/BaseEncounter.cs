@@ -231,7 +231,11 @@ public partial class BaseEncounter : Node2D
         foreach (var mob in _mobs)
             if (IsInstanceValid(mob)) mob.ProcessMode = ProcessModeEnum.Disabled;
         foreach (var child in GetChildren())
-            if (child is Firebolt bolt) bolt.ProcessMode = ProcessModeEnum.Disabled;
+        {
+            if (child is Firebolt bolt)             bolt.ProcessMode = ProcessModeEnum.Disabled;
+            if (child is Fireball fb)               fb.ProcessMode   = ProcessModeEnum.Disabled;
+            if (child is BurningGroundEffect bge)   bge.ProcessMode  = ProcessModeEnum.Disabled;
+        }
     }
 
     private void ShowResultModal(bool victory)
@@ -628,34 +632,42 @@ public partial class BaseEncounter : Node2D
     {
         if (card == null) return;
         if (card.Id == "firebolt")  SpawnPlayerFirebolt(card);
-        if (card.Id == "mysticism") ApplyMysticismBuff();
+        if (card.Id == "fireball")  SpawnPlayerFireball(card);
+        if (card.Id == "mysticism") ApplyMysticismBuff(card);
         if (card.Id == "cleave")    SpawnPlayerCleave(card);
     }
 
     private void SpawnPlayerCleave(CardData card)
     {
-        var player   = GetNode<Node2D>("Player");
-        var origin   = player.GlobalPosition;
-        var dir      = (GetGlobalMousePosition() - origin).Normalized();
+        var player = GetNode<Node2D>("Player");
+        var origin = player.GlobalPosition;
+        var dir    = (GetGlobalMousePosition() - origin).Normalized();
 
-        int damage = card.Tags.Contains("Spell") ? (int)(15 * _spellDamageMult) : 15;
+        int baseDamage = (int)card.GetValue(1, 15);
+        int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
 
-        var cleave = new CleaveAttack { Damage = damage };
+        var cleave = new CleaveAttack
+        {
+            Damage     = damage,
+            Range      = card.GetValue(2, 150f),
+            ArcDegrees = card.GetValue(3, 180f),
+        };
         AddChild(cleave);
         cleave.Init(origin, dir, _mobs);
     }
 
-    private void ApplyMysticismBuff()
+    private void ApplyMysticismBuff(CardData card = null)
     {
+        float multiplier = card != null ? card.GetValue(1, 2.0f) : 2.0f;
         ApplyBuff(new ActiveBuff(new BuffData
         {
             Id          = "mysticism",
             Name        = "Mysticism",
             Duration    = -1,
             Effect      = BuffEffectType.SpellDamageMultiplier,
-            Value       = 2.0f,
+            Value       = multiplier,
             Color       = new Color(0.6f, 0.20f, 0.90f),
-            Description = "At the start of each turn, doubles all spell card damage (stacks every turn).",
+            Description = $"At the start of each turn, multiplies all spell card damage by {multiplier}x (stacks every turn).",
         }));
     }
 
@@ -723,18 +735,43 @@ public partial class BaseEncounter : Node2D
         if (_tooltip != null) _tooltip.Visible = false;
     }
 
+    private void SpawnPlayerFireball(CardData card)
+    {
+        var player = GetNode<Node2D>("Player");
+        var origin = player.GlobalPosition;
+        var dir    = (GetGlobalMousePosition() - origin).Normalized();
+
+        int baseDamage = (int)card.GetValue(1, 5);
+        int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
+
+        var fireball = new Fireball
+        {
+            IsPlayerOwned    = true,
+            AreaDamage       = damage,
+            ProjectileRadius = card.GetValue(2, 8f),
+            ProjectileSpeed  = card.GetValue(3, 400f),
+            BlastRadius      = card.GetValue(4, 80f),
+            BurnDuration     = card.GetValue(5, 5f),
+            Mobs             = _mobs,
+        };
+        AddChild(fireball);
+        fireball.Init(dir, origin);
+    }
+
     private void SpawnPlayerFirebolt(CardData card)
     {
-        var player   = GetNode<Node2D>("Player");
-        var origin   = player.GlobalPosition;
-        var mousePos = GetGlobalMousePosition();
-        var dir      = (mousePos - origin).Normalized();
+        var player = GetNode<Node2D>("Player");
+        var origin = player.GlobalPosition;
+        var dir    = (GetGlobalMousePosition() - origin).Normalized();
+
+        int baseDamage = (int)card.GetValue(1, 10);
+        int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
 
         var bolt = _fireboltScene.Instantiate<Firebolt>();
-        bolt.IsPlayerOwned = true;
-        bolt.Damage        = 10;
-        if (card.Tags.Contains("Spell"))
-            bolt.Damage = (int)(bolt.Damage * _spellDamageMult);
+        bolt.IsPlayerOwned    = true;
+        bolt.Damage           = damage;
+        bolt.ProjectileRadius = card.GetValue(2, 0f);
+        bolt.ProjectileSpeed  = card.GetValue(3, 0f);
         AddChild(bolt);
         bolt.Init(dir, origin);
     }

@@ -6,13 +6,14 @@ public static class ClassStore
 {
     private class SkillDef
     {
-        public string Id          { get; set; }
-        public string Name        { get; set; }
-        public string Description { get; set; } = "";
-        public float  Cooldown    { get; set; }
-        public float  R           { get; set; }
-        public float  G           { get; set; }
-        public float  B           { get; set; }
+        public string  Id          { get; set; }
+        public string  Name        { get; set; }
+        public string  Description { get; set; } = "";
+        public float   Cooldown    { get; set; }
+        public float   R           { get; set; }
+        public float   G           { get; set; }
+        public float   B           { get; set; }
+        public float[] Values      { get; set; } = new float[10];
     }
 
     private class ClassesFile
@@ -41,7 +42,7 @@ public static class ClassStore
             var defs = JsonSerializer.Deserialize<List<SkillDef>>(file.GetAsText());
             if (defs == null) return;
             foreach (var d in defs)
-                AllSkills.Add(new SkillData(d.Id, d.Name, d.Description ?? "", d.Cooldown, new Color(d.R, d.G, d.B)));
+                AllSkills.Add(new SkillData(d.Id, d.Name, d.Description ?? "", d.Cooldown, new Color(d.R, d.G, d.B), d.Values));
         }
         catch { }
     }
@@ -58,7 +59,8 @@ public static class ClassStore
                 Cooldown    = s.Cooldown,
                 R           = s.Color.R,
                 G           = s.Color.G,
-                B           = s.Color.B
+                B           = s.Color.B,
+                Values      = (float[])s.Values.Clone()
             });
         using var file = FileAccess.Open(SkillsOverridePath, FileAccess.ModeFlags.Write);
         file?.StoreString(JsonSerializer.Serialize(defs));

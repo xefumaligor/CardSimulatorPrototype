@@ -9,8 +9,9 @@ public class CardData
     public Color        Color   { get; set; }
     public float        UseTime { get; set; }
     public List<string> Tags    { get; set; } = new();
+    public float[]      Values  { get; set; } = new float[10];
 
-    public CardData(string id, string name, string text, Color color, float useTime = 1.0f, List<string> tags = null)
+    public CardData(string id, string name, string text, Color color, float useTime = 1.0f, List<string> tags = null, float[] values = null)
     {
         Id      = id;
         Name    = name;
@@ -18,9 +19,18 @@ public class CardData
         Color   = color;
         UseTime = useTime;
         Tags    = tags ?? new List<string>();
+        Values  = values != null && values.Length == 10 ? values : new float[10];
     }
 
-    public CardData Clone() => new CardData(Id, Name, Text, Color, UseTime, new List<string>(Tags));
+    // 1-based: GetValue(1) returns Values[0]. Returns defaultVal if index out of range or value is 0.
+    public float GetValue(int n, float defaultVal = 0f)
+    {
+        if (n < 1 || n > 10) return defaultVal;
+        float v = Values[n - 1];
+        return v != 0f ? v : defaultVal;
+    }
+
+    public CardData Clone() => new CardData(Id, Name, Text, Color, UseTime, new List<string>(Tags), (float[])Values.Clone());
 }
 
 public class DeckEntry

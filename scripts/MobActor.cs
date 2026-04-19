@@ -85,6 +85,16 @@ public partial class MobActor : CharacterBody2D
 
     public override void _Process(double delta)
     {
+        if (_isBurning)
+        {
+            _burnElapsed += (float)delta;
+            if (_burnElapsed >= BurnTickRate)
+            {
+                _burnElapsed -= BurnTickRate;
+                TakeDamage(BurnTickDamage);
+            }
+        }
+
         if (_cardQueue.Count == 0) return;
 
         var card = _cardQueue.Peek();
@@ -104,7 +114,8 @@ public partial class MobActor : CharacterBody2D
 
     private void PlayCard(CardData card)
     {
-        if (card.Id == "firebolt") SpawnFirebolt();
+        if (card.Id == "firebolt")  SpawnFirebolt();
+        if (card.Id == "fireball")  SpawnFireball();
         // Other card ids are silently consumed (e.g. shuffle)
     }
 
@@ -120,6 +131,21 @@ public partial class MobActor : CharacterBody2D
         bolt.Init(dir, GlobalPosition);
     }
 
+    private void SpawnFireball()
+    {
+        if (_playerRef == null || !IsInsideTree()) return;
+
+        var dir      = (_playerRef.GlobalPosition - GlobalPosition).Normalized();
+        var fireball = new Fireball
+        {
+            IsPlayerOwned = false,
+            AreaDamage    = 5,
+            PlayerRef     = _playerRef,
+        };
+        GetParent().AddChild(fireball);
+        fireball.Init(dir, GlobalPosition);
+    }
+
     public void TakeDamage(int amount)
     {
         CurrentHp = Mathf.Max(0, CurrentHp - amount);
@@ -128,6 +154,34 @@ public partial class MobActor : CharacterBody2D
         {
             OnDied?.Invoke(this);
             QueueFree();
+        }
+    }
+
+    private ColorRect _burningIndicator;
+    private bool      _isBurning;
+    private float     _burnElapsed;
+    private const float BurnTickRate   = 0.5f;
+    private const int   BurnTickDamage = 1;    // 2 dmg/sec
+
+    public void SetBurning(bool burning)
+    {
+        if (burning == _isBurning) return;
+        _isBurning   = burning;
+        _burnElapsed = 0f;
+
+        if (burning && _burningIndicator == null)
+        {
+            _burningIndicator          = new ColorRect();
+            _burningIndicator.Size     = new Vector2(8, 8);
+            _burningIndicator.Position = new Vector2(8, -38);
+            _burningIndicator.Color    = new Color(1f, 0.4f, 0.0f);
+            _burningIndicator.ZIndex   = 1;
+            AddChild(_burningIndicator);
+        }
+        else if (!burning && _burningIndicator != null)
+        {
+            _burningIndicator.QueueFree();
+            _burningIndicator = null;
         }
     }
 }

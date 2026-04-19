@@ -3,19 +3,20 @@ using System.Collections.Generic;
 
 public partial class CleaveAttack : Node2D
 {
-    public const float Range    = 150f;
     private const float Duration = 0.30f;
     private const int   Segments = 16;
 
-    public int Damage { get; set; } = 15;
+    public int   Damage     { get; set; } = 15;
+    public float Range      { get; set; } = 150f;
+    public float ArcDegrees { get; set; } = 180f;
 
     private Polygon2D _visual;
     private float     _elapsed;
 
     public override void _Ready()
     {
-        _visual         = BuildFanPolygon();
-        _visual.Scale   = new Vector2(0.1f, 0.1f);
+        _visual       = BuildFanPolygon(Range, ArcDegrees);
+        _visual.Scale = new Vector2(0.1f, 0.1f);
         AddChild(_visual);
     }
 
@@ -24,27 +25,28 @@ public partial class CleaveAttack : Node2D
         GlobalPosition = origin;
         Rotation       = direction.Angle();
 
+        float minDot = Mathf.Cos(Mathf.DegToRad(ArcDegrees / 2f));
+
         foreach (var mob in mobs)
         {
             if (!IsInstanceValid(mob)) continue;
-            var  toMob = mob.GlobalPosition - origin;
-            float dist = toMob.Length();
-            float dot  = dist > 0f ? toMob.Normalized().Dot(direction) : 0f;
-            if (dist <= Range && dot >= 0f)
+            var   toMob = mob.GlobalPosition - origin;
+            float dist  = toMob.Length();
+            float dot   = dist > 0f ? toMob.Normalized().Dot(direction) : 0f;
+            if (dist <= Range && dot >= minDot)
                 mob.TakeDamage(Damage);
         }
     }
 
-    private static Polygon2D BuildFanPolygon()
+    private static Polygon2D BuildFanPolygon(float range, float arcDegrees)
     {
-        // Fan from -90° to +90° (local space faces right = forward).
-        const float halfArc = Mathf.Pi / 2f;
-        var pts = new Vector2[Segments + 2];
-        pts[0]  = Vector2.Zero;
+        float halfArc = Mathf.DegToRad(arcDegrees / 2f);
+        var   pts     = new Vector2[Segments + 2];
+        pts[0] = Vector2.Zero;
         for (int i = 0; i <= Segments; i++)
         {
-            float a = -halfArc + i * (Mathf.Pi / Segments);
-            pts[i + 1] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Range;
+            float a = -halfArc + i * (2f * halfArc / Segments);
+            pts[i + 1] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * range;
         }
 
         var poly   = new Polygon2D();

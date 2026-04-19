@@ -8,7 +8,17 @@ public partial class CardEditor : Control
     private SpinBox            _useTimeInput;
     private ColorPickerButton  _colorPicker;
     private List<CheckBox>     _tagCheckboxes = new();
+    private Dictionary<int, SpinBox> _valueInputs = new();
     private CardData           _card;
+
+    // Value labels per card id: (1-based value index, label text)
+    private static readonly System.Collections.Generic.Dictionary<string, (int idx, string label)[]> ValueDefs = new()
+    {
+        ["firebolt"]  = new[] { (1, "Damage"), (2, "Projectile Size"), (3, "Projectile Speed") },
+        ["fireball"]  = new[] { (1, "Damage"), (2, "Projectile Size"), (3, "Projectile Speed"), (4, "Blast / Ground Radius"), (5, "Burn Duration (s)") },
+        ["cleave"]    = new[] { (1, "Damage"), (2, "Arc Radius"), (3, "Arc Degrees") },
+        ["mysticism"] = new[] { (1, "Spell Damage Multiplier") },
+    };
 
     public override void _Ready()
     {
@@ -160,6 +170,55 @@ public partial class CardEditor : Control
 
         y += 205;
 
+        // Balance Values
+        if (ValueDefs.TryGetValue(_card.Id, out var defs))
+        {
+            var valLabel = new Label();
+            valLabel.Text     = "Balance Values:";
+            valLabel.Position = new Vector2(x, y);
+            valLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f));
+            AddChild(valLabel);
+            y += 30;
+
+            int col    = 0;
+            int row    = 0;
+            int colW   = 400;
+            int rowH   = 44;
+            int labelW = 200;
+            int spinW  = 160;
+
+            foreach (var (idx, lbl) in defs)
+            {
+                int cx = x + col * colW;
+                int cy = y + row * rowH;
+
+                var entryLabel = new Label();
+                entryLabel.Text     = lbl + ":";
+                entryLabel.Position = new Vector2(cx, cy + 6);
+                entryLabel.Size     = new Vector2(labelW, 24);
+                entryLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.75f, 0.75f));
+                AddChild(entryLabel);
+
+                var spin = new SpinBox();
+                spin.Position  = new Vector2(cx + labelW, cy);
+                spin.Size      = new Vector2(spinW, 32);
+                spin.MinValue  = 0;
+                spin.MaxValue  = 10000;
+                spin.Step      = 0.1;
+                spin.Value     = _card.Values[idx - 1];
+                spin.CustomMinimumSize = new Vector2(spinW, 32);
+                AddChild(spin);
+
+                _valueInputs[idx] = spin;
+
+                col = 1 - col;
+                if (col == 0) row++;
+            }
+
+            int usedRows = (defs.Length + 1) / 2;
+            y += usedRows * rowH + 20;
+        }
+
         var saveBtn = new Button();
         saveBtn.Text              = "Save";
         saveBtn.Position          = new Vector2(x, y);
@@ -189,6 +248,9 @@ public partial class CardEditor : Control
         for (int i = 0; i < _tagCheckboxes.Count && i < DeckStore.AllTags.Count; i++)
             if (_tagCheckboxes[i].ButtonPressed)
                 _card.Tags.Add(DeckStore.AllTags[i]);
+
+        foreach (var (idx, spin) in _valueInputs)
+            _card.Values[idx - 1] = (float)spin.Value;
 
         DeckStore.SaveCards();
         GetTree().ChangeSceneToFile("res://scenes/CardListScreen.tscn");

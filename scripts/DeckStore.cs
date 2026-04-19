@@ -15,6 +15,7 @@ public static class DeckStore
         public float        B       { get; set; }
         public float        UseTime { get; set; } = 1.0f;
         public List<string> Tags    { get; set; } = new();
+        public float[]      Values  { get; set; } = new float[10];
     }
 
     private class DecksFile
@@ -54,7 +55,7 @@ public static class DeckStore
             LoadCardDefs(CardsOverridePath, merged);
 
         foreach (var d in merged.Values)
-            AllCards.Add(new CardData(d.Id, d.Name, d.Text ?? "", new Color(d.R, d.G, d.B), d.UseTime, d.Tags ?? new()));
+            AllCards.Add(new CardData(d.Id, d.Name, d.Text ?? "", new Color(d.R, d.G, d.B), d.UseTime, d.Tags ?? new(), d.Values));
     }
 
     private static void LoadCardDefs(string path, Dictionary<string, CardDef> target)
@@ -97,7 +98,8 @@ public static class DeckStore
                 G       = c.Color.G,
                 B       = c.Color.B,
                 UseTime = c.UseTime,
-                Tags    = new List<string>(c.Tags)
+                Tags    = new List<string>(c.Tags),
+                Values  = (float[])c.Values.Clone()
             });
         using var file = FileAccess.Open(CardsOverridePath, FileAccess.ModeFlags.Write);
         file?.StoreString(JsonSerializer.Serialize(defs));

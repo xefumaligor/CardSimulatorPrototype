@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 public partial class SkillEditor : Control
 {
@@ -6,7 +7,14 @@ public partial class SkillEditor : Control
     private TextEdit          _descInput;
     private SpinBox           _cooldownInput;
     private ColorPickerButton _colorPicker;
+    private Dictionary<int, SpinBox> _valueInputs = new();
     private SkillData         _skill;
+
+    private static readonly Dictionary<string, (int idx, string label)[]> ValueDefs = new()
+    {
+        // Add skill-specific value labels here as new skills are implemented.
+        // ["duplicate"] = new[] { (1, "Number of Copies") },
+    };
 
     public override void _Ready()
     {
@@ -117,6 +125,55 @@ public partial class SkillEditor : Control
 
         y += 55;
 
+        // Balance Values
+        if (ValueDefs.TryGetValue(_skill.Id, out var defs))
+        {
+            var valLabel = new Label();
+            valLabel.Text     = "Balance Values:";
+            valLabel.Position = new Vector2(x, y);
+            valLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f));
+            AddChild(valLabel);
+            y += 30;
+
+            int col   = 0;
+            int row   = 0;
+            int colW  = 400;
+            int rowH  = 44;
+            int labelW = 200;
+            int spinW  = 160;
+
+            foreach (var (idx, lbl) in defs)
+            {
+                int cx = x + col * colW;
+                int cy = y + row * rowH;
+
+                var entryLabel = new Label();
+                entryLabel.Text     = lbl + ":";
+                entryLabel.Position = new Vector2(cx, cy + 6);
+                entryLabel.Size     = new Vector2(labelW, 24);
+                entryLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.75f, 0.75f));
+                AddChild(entryLabel);
+
+                var spin = new SpinBox();
+                spin.Position  = new Vector2(cx + labelW, cy);
+                spin.Size      = new Vector2(spinW, 32);
+                spin.MinValue  = 0;
+                spin.MaxValue  = 10000;
+                spin.Step      = 0.1;
+                spin.Value     = _skill.Values[idx - 1];
+                spin.CustomMinimumSize = new Vector2(spinW, 32);
+                AddChild(spin);
+
+                _valueInputs[idx] = spin;
+
+                col = 1 - col;
+                if (col == 0) row++;
+            }
+
+            int usedRows = (defs.Length + 1) / 2;
+            y += usedRows * rowH + 20;
+        }
+
         // Save / Cancel
         var saveBtn = new Button();
         saveBtn.Text              = "Save";
@@ -142,6 +199,9 @@ public partial class SkillEditor : Control
         _skill.Description = _descInput.Text;
         _skill.Cooldown    = (float)_cooldownInput.Value;
         _skill.Color       = _colorPicker.Color;
+
+        foreach (var (idx, spin) in _valueInputs)
+            _skill.Values[idx - 1] = (float)spin.Value;
 
         ClassStore.SaveSkills();
         GetTree().ChangeSceneToFile("res://scenes/SkillListScreen.tscn");

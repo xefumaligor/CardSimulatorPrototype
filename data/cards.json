@@ -1,6 +1,12 @@
 [
-  {"Id": "firebolt",   "Name": "Firebolt",   "Text": "Cast a firebolt that deals 10 fire damage.",                      "R": 1.0, "G": 0.10, "B": 0.10, "UseTime": 1.0, "Tags": ["Attack", "Spell", "Fire"]},
-  {"Id": "shuffle",    "Name": "Curse",       "Text": "",                                                                "R": 0.0, "G": 0.00, "B": 0.00, "UseTime": 1.0, "Tags": []},
-  {"Id": "mysticism",  "Name": "Mysticism",   "Text": "Permanently double your spell damage at the start of each turn.", "R": 0.6, "G": 0.20, "B": 0.90, "UseTime": 1.0, "Tags": ["Power"]},
-  {"Id": "cleave",     "Name": "Cleave",      "Text": "Slash in a 180° arc dealing 15 damage to all enemies in front.",   "R": 0.9, "G": 0.65, "B": 0.10, "UseTime": 0.5, "Tags": ["Attack", "Physical"]}
+  {"Id": "firebolt",   "Name": "Firebolt",   "Text": "Cast a firebolt that deals fire damage.",                      "R": 1.0, "G": 0.10, "B": 0.10, "UseTime": 1.0, "Tags": ["Attack", "Spell", "Fire"],
+   "Values": [10, 6, 450, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "shuffle",    "Name": "Curse",       "Text": "",                                                                "R": 0.0, "G": 0.00, "B": 0.00, "UseTime": 1.0, "Tags": [],
+   "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "mysticism",  "Name": "Mysticism",   "Text": "Permanently double your spell damage at the start of each turn.", "R": 0.6, "G": 0.20, "B": 0.90, "UseTime": 1.0, "Tags": ["Power"],
+   "Values": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "cleave",     "Name": "Cleave",      "Text": "Slash in a 180° arc dealing damage to all enemies in front.",   "R": 0.9, "G": 0.65, "B": 0.10, "UseTime": 0.5, "Tags": ["Attack", "Physical"],
+   "Values": [15, 150, 180, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "fireball",   "Name": "Fireball",    "Text": "Launch a fireball that explodes on impact, dealing area damage and leaving burning ground. Enemies on the fire take 2 damage per second.", "R": 1.0, "G": 0.35, "B": 0.00, "UseTime": 1.5, "Tags": ["Attack", "Spell", "Fire", "Area"],
+   "Values": [5, 8, 400, 80, 5, 0, 0, 0, 0, 0]}
 ]
