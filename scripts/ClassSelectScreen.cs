@@ -32,7 +32,13 @@ public partial class ClassSelectScreen : Control
         backBtn.Text     = "Back";
         backBtn.Size     = new Vector2(120, 36);
         backBtn.Position = new Vector2(900 - 50 - 120, 26);
-        backBtn.Pressed  += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        backBtn.Pressed  += () =>
+        {
+            string dest = RunState.IsTestMode
+                ? RunState.TestReturnScene
+                : "res://scenes/MainMenu.tscn";
+            GetTree().ChangeSceneToFile(dest);
+        };
         AddChild(backBtn);
 
         if (ClassStore.Classes.Count == 0)
@@ -105,6 +111,14 @@ public partial class ClassSelectScreen : Control
         var chosen = ClassStore.Classes[index];
         ClassStore.ActiveClass = chosen;
         RunState.StartRun(chosen);
+
+        if (!RunState.IsTestMode)
+        {
+            EncounterStore.LoadEncounters();
+            RunState.EncounterIndex   = 1;
+            RunState.CurrentEncounter = EncounterStore.Encounters.Find(e => e.Name == "Level1");
+        }
+
         GetTree().ChangeSceneToFile("res://scenes/BaseEncounter.tscn");
     }
 }

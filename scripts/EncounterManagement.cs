@@ -152,6 +152,13 @@ public partial class EncounterManagement : Control
         cancelBtn.Pressed += OnCancelPressed;
         AddChild(cancelBtn);
 
+        var saveTestBtn = new Button();
+        saveTestBtn.Text     = "Save and Test";
+        saveTestBtn.Position = new Vector2(x + 260, y);
+        saveTestBtn.Size     = new Vector2(160, 36);
+        saveTestBtn.Pressed += OnSaveAndTestPressed;
+        AddChild(saveTestBtn);
+
         RebuildMobList();
     }
 
@@ -248,5 +255,40 @@ public partial class EncounterManagement : Control
     private void OnCancelPressed()
     {
         GetTree().ChangeSceneToFile("res://scenes/EncounterListScreen.tscn");
+    }
+
+    private void OnSaveAndTestPressed()
+    {
+        if (_typeDropdown.Selected == 0) return;
+
+        SaveFormToPending();
+
+        var pending = EncounterStore.PendingEntry;
+        string name = pending.Name.Length == 0 ? EncounterStore.NextEncounterName() : pending.Name;
+
+        var entry = new EncounterEntry
+        {
+            Name   = name,
+            Type   = pending.Type,
+            Height = pending.Height,
+            Width  = pending.Width,
+            Mobs   = new System.Collections.Generic.List<string>(pending.Mobs),
+        };
+
+        if (EncounterStore.EditingIndex < 0)
+        {
+            EncounterStore.Encounters.Add(entry);
+            EncounterStore.EditingIndex = EncounterStore.Encounters.Count - 1;
+        }
+        else
+        {
+            EncounterStore.Encounters[EncounterStore.EditingIndex] = entry;
+        }
+        EncounterStore.SaveEncounters();
+
+        RunState.CurrentEncounter = entry;
+        RunState.IsTestMode       = true;
+        RunState.TestReturnScene  = "res://scenes/EncounterManagement.tscn";
+        GetTree().ChangeSceneToFile("res://scenes/ClassSelectScreen.tscn");
     }
 }

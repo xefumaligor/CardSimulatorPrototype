@@ -5,7 +5,6 @@ public partial class MainMenu : Control
     public override void _Ready()
     {
         GetNode<Button>("VBoxContainer/BtnWaves").Pressed          += OnWavesPressed;
-        GetNode<Button>("VBoxContainer/BtnTestEncounter").Pressed  += () => GetTree().ChangeSceneToFile("res://scenes/SelectEncounterScreen.tscn");
         GetNode<Button>("VBoxContainer/BtnDeckManagement").Pressed  += OnDeckManagementPressed;
         GetNode<Button>("VBoxContainer/BtnClassManagement").Pressed += () =>
             GetTree().ChangeSceneToFile("res://scenes/ClassListScreen.tscn");
@@ -17,6 +16,9 @@ public partial class MainMenu : Control
 
     private void OnWavesPressed()
     {
+        EncounterStore.LoadEncounters();
+        RunState.CurrentEncounter = EncounterStore.Encounters.Find(e => e.Name == "Level1");
+        RunState.IsTestMode       = false;
         GetTree().ChangeSceneToFile("res://scenes/ClassSelectScreen.tscn");
     }
 

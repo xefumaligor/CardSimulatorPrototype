@@ -101,6 +101,12 @@ public partial class EncounterListScreen : Control
             btn.Pressed            += () => OnEncounterSelected(capturedIndex);
             row.AddChild(btn);
 
+            var testBtn = new Button();
+            testBtn.Text              = "Test";
+            testBtn.CustomMinimumSize = new Vector2(80, 44);
+            testBtn.Pressed          += () => OnTestEncounter(capturedIndex);
+            row.AddChild(testBtn);
+
             var delBtn = new Button();
             delBtn.Text              = "✕";
             delBtn.CustomMinimumSize = new Vector2(44, 44);
@@ -134,5 +140,13 @@ public partial class EncounterListScreen : Control
     {
         EncounterStore.EditingIndex = index;
         GetTree().ChangeSceneToFile("res://scenes/EncounterManagement.tscn");
+    }
+
+    private void OnTestEncounter(int index)
+    {
+        RunState.CurrentEncounter = EncounterStore.Encounters[index];
+        RunState.IsTestMode       = true;
+        RunState.TestReturnScene  = "res://scenes/EncounterListScreen.tscn";
+        GetTree().ChangeSceneToFile("res://scenes/ClassSelectScreen.tscn");
     }
 }

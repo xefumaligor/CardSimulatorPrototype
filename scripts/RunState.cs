@@ -5,10 +5,15 @@ using System.Collections.Generic;
 // so mid-run/encounter mutations never touch the base class definition.
 public static class RunState
 {
-    public static SkillData[]    Skills         { get; } = new SkillData[4];
-    public static List<CardData> Deck           { get; } = new();
-    public static int            PlayerMaxHp    { get; set; } = 100;
+    public static SkillData[]    Skills          { get; } = new SkillData[4];
+    public static List<CardData> Deck            { get; } = new();
+    public static int            PlayerMaxHp     { get; set; } = 100;
     public static int            PlayerCurrentHp { get; set; } = 100;
+
+    public static EncounterEntry CurrentEncounter { get; set; }
+    public static int            EncounterIndex   { get; set; } = 1;
+    public static bool           IsTestMode       { get; set; }
+    public static string         TestReturnScene  { get; set; }
 
     public static void StartRun(ClassEntry chosenClass)
     {

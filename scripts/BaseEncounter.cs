@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 public partial class BaseEncounter : Node2D
 {
-    private const int RoomHalf    = 350;
     private const int RoomOffsetY = -90;
     private const int TileSize    = 70;
     private const int CardW       = 75;
@@ -14,20 +13,23 @@ public partial class BaseEncounter : Node2D
     private static readonly Color TileA = new(0.15f, 0.15f, 0.20f);
     private static readonly Color TileB = new(0.12f, 0.12f, 0.17f);
 
+    private int _roomHalfX;
+    private int _roomHalfY;
+
     private PackedScene _fireboltScene;
 
     // ── Player health ─────────────────────────────────────────────────────────
 
     private HealthBar _playerHealthBar;
 
-    // ── Mob ───────────────────────────────────────────────────────────────────
+    // ── Mobs ──────────────────────────────────────────────────────────────────
 
-    private MobActor _mob;
+    private List<MobActor> _mobs = new();
 
     // ── Deck / queue ─────────────────────────────────────────────────────────
 
-    private List<CardData>  _deckCards  = new();
-    private Queue<CardData> _cardQueue  = new();
+    private List<CardData> _deckCards  = new();
+    private int            _deckIndex  = 0;
 
     // ── HUD state ─────────────────────────────────────────────────────────────
 
@@ -45,11 +47,20 @@ public partial class BaseEncounter : Node2D
     private double[]     _skillCooldowns     = new double[4];
     private ColorRect[]  _skillCooldownFills = new ColorRect[4];
 
+    private CanvasLayer _hud;
+    private bool        _encounterOver = false;
+
     // ─────────────────────────────────────────────────────────────────────────
 
     public override void _Ready()
     {
         _fireboltScene = GD.Load<PackedScene>("res://scenes/Firebolt.tscn");
+
+        var encounter = RunState.CurrentEncounter;
+        _roomHalfX = encounter != null ? encounter.Width  / 2 : 350;
+        _roomHalfY = encounter != null ? encounter.Height / 2 : 350;
+
+        ApplyRoomSize();
 
         ClassStore.EnsureSkillsLoaded();
         LoadSkillsFromClass();
@@ -58,39 +69,121 @@ public partial class BaseEncounter : Node2D
         DeckStore.LoadDecks();
         LoadDeckCards();
 
-        // Ensure player HP is initialised (fallback for testing without class select)
         if (RunState.PlayerMaxHp <= 0)
             RunState.PlayerMaxHp = RunState.PlayerCurrentHp = 100;
 
         var player = GetNode<Node2D>("Player");
+        player.GlobalPosition = RandomPlayerPosition();
 
-        // Player health bar
         _playerHealthBar          = new HealthBar();
         _playerHealthBar.Position = new Vector2(0, -28);
         _playerHealthBar.Init(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
         player.AddChild(_playerHealthBar);
 
-        // Mob spawning
-        SpawnMob(player);
+        SpawnMobs(player);
 
-        var hud = new CanvasLayer();
-        AddChild(hud);
-        BuildCardHud(hud);
+        _hud = new CanvasLayer();
+        AddChild(_hud);
+        BuildCardHud(_hud);
+    }
+
+    // ── Room size ─────────────────────────────────────────────────────────────
+
+    private void ApplyRoomSize()
+    {
+        var room = GetNode<Node2D>("Room");
+        int w = _roomHalfX * 2;
+        int h = _roomHalfY * 2;
+
+        SetWall(room, "Wall_Top",
+            new Vector2(0, -_roomHalfY),
+            new Vector2(w + 40, 20),
+            new Vector2[] { new(-w / 2f - 20, -10), new(w / 2f + 20, -10), new(w / 2f + 20, 10), new(-w / 2f - 20, 10) });
+
+        SetWall(room, "Wall_Bottom",
+            new Vector2(0, _roomHalfY),
+            new Vector2(w + 40, 20),
+            new Vector2[] { new(-w / 2f - 20, -10), new(w / 2f + 20, -10), new(w / 2f + 20, 10), new(-w / 2f - 20, 10) });
+
+        SetWall(room, "Wall_Left",
+            new Vector2(-_roomHalfX, 0),
+            new Vector2(20, h + 40),
+            new Vector2[] { new(-10, -h / 2f - 20), new(10, -h / 2f - 20), new(10, h / 2f + 20), new(-10, h / 2f + 20) });
+
+        SetWall(room, "Wall_Right",
+            new Vector2(_roomHalfX, 0),
+            new Vector2(20, h + 40),
+            new Vector2[] { new(-10, -h / 2f - 20), new(10, -h / 2f - 20), new(10, h / 2f + 20), new(-10, h / 2f + 20) });
+
+        QueueRedraw();
+    }
+
+    private static void SetWall(Node2D room, string name, Vector2 pos, Vector2 shapeSize, Vector2[] poly)
+    {
+        var wall = room.GetNode<StaticBody2D>(name);
+        wall.Position = pos;
+        ((RectangleShape2D)wall.GetNode<CollisionShape2D>("CollisionShape2D").Shape).Size = shapeSize;
+        wall.GetNode<Polygon2D>("Polygon2D").Polygon = poly;
+    }
+
+    // ── Player placement ──────────────────────────────────────────────────────
+
+    private Vector2 RandomPlayerPosition()
+    {
+        const int margin = 200;
+        float x = (float)GD.RandRange(-_roomHalfX + margin, _roomHalfX - margin);
+        float y = (float)GD.RandRange(RoomOffsetY - _roomHalfY + margin, RoomOffsetY + _roomHalfY - margin);
+        return new Vector2(x, y);
     }
 
     // ── Mob spawning ──────────────────────────────────────────────────────────
 
-    private void SpawnMob(Node2D player)
+    private void SpawnMobs(Node2D player)
     {
         MobStore.LoadMobs();
-        var entry = MobStore.Mobs.Find(m => m.Name == "Goblin Mage");
-        if (entry == null) return;
+        var encounter = RunState.CurrentEncounter;
+        var mobNames  = encounter?.Mobs ?? new List<string> { "Goblin Mage" };
 
-        var deck = BuildDeckFromName(entry.DeckName);
-        _mob = new MobActor();
-        _mob.InitData(entry, deck, player, _fireboltScene);
-        AddChild(_mob);
-        _mob.GlobalPosition = new Vector2(0, -240);
+        var usedPositions = new List<Vector2> { player.GlobalPosition };
+
+        foreach (string mobName in mobNames)
+        {
+            var entry = MobStore.Mobs.Find(m => m.Name == mobName);
+            if (entry == null) continue;
+
+            var pos  = RandomMobPosition(usedPositions);
+            var deck = BuildDeckFromName(entry.DeckName);
+            var mob  = new MobActor();
+            mob.InitData(entry, deck, player, _fireboltScene);
+            mob.OnDied += m => OnMobDied(m);
+            AddChild(mob);
+            mob.GlobalPosition = pos;
+            _mobs.Add(mob);
+            usedPositions.Add(pos);
+        }
+    }
+
+    private Vector2 RandomMobPosition(List<Vector2> occupied)
+    {
+        const int wallMargin    = 60;
+        const int minFromPlayer = 100;
+        const int minFromMob    = 60;
+
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            float x = (float)GD.RandRange(-_roomHalfX + wallMargin, _roomHalfX - wallMargin);
+            float y = (float)GD.RandRange(RoomOffsetY - _roomHalfY + wallMargin, RoomOffsetY + _roomHalfY - wallMargin);
+            var   p = new Vector2(x, y);
+
+            bool ok = true;
+            for (int i = 0; i < occupied.Count; i++)
+            {
+                float minDist = i == 0 ? minFromPlayer : minFromMob;
+                if (p.DistanceTo(occupied[i]) < minDist) { ok = false; break; }
+            }
+            if (ok) return p;
+        }
+        return new Vector2(_roomHalfX / 2f, RoomOffsetY);
     }
 
     private List<CardData> BuildDeckFromName(string deckName)
@@ -111,22 +204,118 @@ public partial class BaseEncounter : Node2D
         return result;
     }
 
+    // ── Encounter end detection ───────────────────────────────────────────────
+
+    private void OnMobDied(MobActor mob)
+    {
+        _mobs.Remove(mob);
+        if (_mobs.Count == 0)
+            ShowResultModal(victory: true);
+    }
+
+    private void FreezeGameplay()
+    {
+        GetNode<Node2D>("Player").ProcessMode = ProcessModeEnum.Disabled;
+        foreach (var mob in _mobs)
+            if (IsInstanceValid(mob)) mob.ProcessMode = ProcessModeEnum.Disabled;
+        foreach (var child in GetChildren())
+            if (child is Firebolt bolt) bolt.ProcessMode = ProcessModeEnum.Disabled;
+    }
+
+    private void ShowResultModal(bool victory)
+    {
+        if (_encounterOver) return;
+        _encounterOver = true;
+
+        FreezeGameplay();
+
+        var overlay = new ColorRect();
+        overlay.Color       = new Color(0f, 0f, 0f, 0.65f);
+        overlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        overlay.MouseFilter = Control.MouseFilterEnum.Stop;
+        _hud.AddChild(overlay);
+
+        var panel = new Panel();
+        panel.Size     = new Vector2(400, 200);
+        panel.Position = new Vector2((900 - 400) / 2f, (860 - 200) / 2f);
+        var panelStyle = new StyleBoxFlat();
+        panelStyle.BgColor     = new Color(0.12f, 0.12f, 0.18f);
+        panelStyle.BorderColor = new Color(0.45f, 0.45f, 0.60f);
+        panelStyle.SetBorderWidthAll(2);
+        panelStyle.CornerRadiusTopLeft = panelStyle.CornerRadiusTopRight =
+        panelStyle.CornerRadiusBottomLeft = panelStyle.CornerRadiusBottomRight = 6;
+        panel.AddThemeStyleboxOverride("panel", panelStyle);
+        overlay.AddChild(panel);
+
+        var title = new Label();
+        title.Text                = victory ? "Victory!" : "Defeat";
+        title.Position            = new Vector2(0, 50);
+        title.Size                = new Vector2(400, 60);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.AddThemeColorOverride("font_color",   victory ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.35f, 0.35f));
+        title.AddThemeFontSizeOverride("font_size", 36);
+        panel.AddChild(title);
+
+        var continueBtn = new Button();
+        continueBtn.Text     = "Continue";
+        continueBtn.Size     = new Vector2(160, 44);
+        continueBtn.Position = new Vector2((400 - 160) / 2f, 130);
+        continueBtn.Pressed += () => OnContinuePressed(victory);
+        panel.AddChild(continueBtn);
+    }
+
+    private void OnContinuePressed(bool victory)
+    {
+        if (RunState.IsTestMode)
+        {
+            GetTree().ChangeSceneToFile(RunState.TestReturnScene);
+            return;
+        }
+
+        if (!victory)
+        {
+            GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+            return;
+        }
+
+        EncounterStore.LoadEncounters();
+        int nextIndex = RunState.EncounterIndex + 1;
+        string nextName = $"Level{nextIndex}";
+        var next = EncounterStore.Encounters.Find(e => e.Name == nextName);
+        if (next == null)
+            next = EncounterStore.Encounters.Find(e => e.Name == "boss");
+
+        if (next != null)
+        {
+            RunState.CurrentEncounter = next;
+            RunState.EncounterIndex   = nextIndex;
+            GetTree().ChangeSceneToFile("res://scenes/BaseEncounter.tscn");
+        }
+        else
+        {
+            GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        }
+    }
+
     // ── Player hit callback (called by mob firebolt) ──────────────────────────
 
     public void OnPlayerHit(int damage)
     {
+        if (_encounterOver) return;
         RunState.PlayerCurrentHp = Mathf.Max(0, RunState.PlayerCurrentHp - damage);
         _playerHealthBar?.Update(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
+        if (RunState.PlayerCurrentHp <= 0)
+            ShowResultModal(victory: false);
     }
 
     // ── Draw ──────────────────────────────────────────────────────────────────
 
     public override void _Draw()
     {
-        int startX = -RoomHalf;
-        int startY = RoomOffsetY - RoomHalf;
-        int endX   =  RoomHalf;
-        int endY   = RoomOffsetY + RoomHalf;
+        int startX = -_roomHalfX;
+        int startY = RoomOffsetY - _roomHalfY;
+        int endX   =  _roomHalfX;
+        int endY   = RoomOffsetY + _roomHalfY;
 
         for (int x = startX; x < endX; x += TileSize)
         for (int y = startY; y < endY; y += TileSize)
@@ -150,26 +339,24 @@ public partial class BaseEncounter : Node2D
         foreach (var card in RunState.Deck)
             _deckCards.Add(card.Clone());
 
-        RefillQueue();
-
+        _deckIndex = 0;
         for (int i = 0; i < HudSlots; i++)
-            _slotCards[i] = DequeueNext();
+            _slotCards[i] = GetDeckCardAt(i);
     }
 
-    private void RefillQueue()
+    private CardData GetDeckCardAt(int offset)
     {
-        foreach (var card in _deckCards)
-            _cardQueue.Enqueue(card);
+        if (_deckCards.Count == 0) return null;
+        return _deckCards[((offset % _deckCards.Count) + _deckCards.Count) % _deckCards.Count];
     }
 
-    private CardData DequeueNext()
+    private void RefreshSlots()
     {
-        if (_cardQueue.Count == 0)
+        for (int i = 0; i < HudSlots; i++)
         {
-            if (_deckCards.Count == 0) return null;
-            RefillQueue();
+            _slotCards[i] = GetDeckCardAt(_deckIndex + i);
+            UpdateSlotVisual(_hudPanels[i], _slotCards[i]);
         }
-        return _cardQueue.Count > 0 ? _cardQueue.Dequeue() : null;
     }
 
     // ── Input ─────────────────────────────────────────────────────────────────
@@ -193,7 +380,7 @@ public partial class BaseEncounter : Node2D
             return;
         }
 
-        if (idx < 0) return;
+        if (idx < 0 || _encounterOver) return;
 
         if (_actionButtons[idx].Disabled) return;
 
@@ -212,6 +399,8 @@ public partial class BaseEncounter : Node2D
 
     public override void _Process(double delta)
     {
+        if (_encounterOver) return;
+
         if (_slotCards[0] == null)
             _progressFill.Visible = false;
         else
@@ -267,33 +456,26 @@ public partial class BaseEncounter : Node2D
 
     private void PlayCurrentCard()
     {
+        if (_deckCards.Count == 0) return;
         var played = _slotCards[0];
 
         if (_duplicateNextCard && played != null)
         {
             _duplicateNextCard = false;
             var clone = played.Clone();
-            _deckCards.Add(clone);
-            _slotCards[0] = clone;
-            UpdateSlotVisual(_hudPanels[0], clone);
+            _deckCards.Insert(_deckIndex + 1, clone);
+            _deckIndex = (_deckIndex + 1) % _deckCards.Count;
+            RefreshSlots();
             _elapsed = 0.0;
             _progressFill.Size = new Vector2(0f, _progressFill.Size.Y);
             SpawnCardEffect(played);
             return;
         }
 
-        for (int i = 0; i < HudSlots - 1; i++)
-        {
-            _slotCards[i] = _slotCards[i + 1];
-            UpdateSlotVisual(_hudPanels[i], _slotCards[i]);
-        }
-
-        _slotCards[HudSlots - 1] = DequeueNext();
-        UpdateSlotVisual(_hudPanels[HudSlots - 1], _slotCards[HudSlots - 1]);
-
+        _deckIndex = (_deckIndex + 1) % _deckCards.Count;
+        RefreshSlots();
         _elapsed = 0.0;
         _progressFill.Size = new Vector2(0f, _progressFill.Size.Y);
-
         SpawnCardEffect(played);
     }
 

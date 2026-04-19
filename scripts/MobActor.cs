@@ -1,8 +1,11 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 public partial class MobActor : CharacterBody2D
 {
+    public event Action<MobActor> OnDied;
+
     public int MaxHp     { get; private set; }
     public int CurrentHp { get; private set; }
 
@@ -122,6 +125,9 @@ public partial class MobActor : CharacterBody2D
         CurrentHp = Mathf.Max(0, CurrentHp - amount);
         _healthBar?.Update(CurrentHp, MaxHp);
         if (CurrentHp <= 0)
+        {
+            OnDied?.Invoke(this);
             QueueFree();
+        }
     }
 }

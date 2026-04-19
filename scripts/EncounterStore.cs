@@ -69,8 +69,8 @@ public static class EncounterStore
             {
                 Name   = NextEncounterName(),
                 Type   = "",
-                Height = 10,
-                Width  = 10,
+                Height = 700,
+                Width  = 700,
                 Mobs   = new List<string>(),
             };
         }
