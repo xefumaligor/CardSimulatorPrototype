@@ -30,3 +30,6 @@ text = "Test Encounter"
 
 [node name="BtnDeckManagement" type="Button" parent="VBoxContainer"]
 text = "Deck Management"
+
+[node name="BtnClassManagement" type="Button" parent="VBoxContainer"]
+text = "Class Management"

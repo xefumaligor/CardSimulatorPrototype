@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://classlist"]
+
+[ext_resource type="Script" path="res://scripts/ClassListScreen.cs" id="1_classlist"]
+
+[node name="ClassListScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_classlist")

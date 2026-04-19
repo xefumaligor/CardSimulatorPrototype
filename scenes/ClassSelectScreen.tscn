@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://classselect"]
+
+[ext_resource type="Script" path="res://scripts/ClassSelectScreen.cs" id="1_classselect"]
+
+[node name="ClassSelectScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_classselect")

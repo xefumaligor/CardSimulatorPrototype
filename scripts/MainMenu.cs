@@ -6,17 +6,14 @@ public partial class MainMenu : Control
     {
         GetNode<Button>("VBoxContainer/BtnWaves").Pressed          += OnWavesPressed;
         GetNode<Button>("VBoxContainer/BtnTestEncounter").Pressed  += () => GetTree().ChangeSceneToFile("res://scenes/SelectEncounterScreen.tscn");
-        GetNode<Button>("VBoxContainer/BtnDeckManagement").Pressed += OnDeckManagementPressed;
+        GetNode<Button>("VBoxContainer/BtnDeckManagement").Pressed  += OnDeckManagementPressed;
+        GetNode<Button>("VBoxContainer/BtnClassManagement").Pressed += () =>
+            GetTree().ChangeSceneToFile("res://scenes/ClassListScreen.tscn");
     }
 
-    private void OnWavesPressed() => GoToEncounter("res://scenes/BaseEncounter.tscn");
-
-    private void GoToEncounter(string scene)
+    private void OnWavesPressed()
     {
-        DeckStore.EnsureCardsLoaded();
-        DeckStore.LoadDecks();
-        DeckStore.PendingEncounterScene = scene;
-        GetTree().ChangeSceneToFile("res://scenes/DeckSelectScreen.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/ClassSelectScreen.tscn");
     }
 
     private void OnDeckManagementPressed()

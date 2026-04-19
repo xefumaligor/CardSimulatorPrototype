@@ -32,13 +32,21 @@ public partial class BaseEncounter : Node2D
     private ColorRect   _progressFill;
     private double      _elapsed       = 0.0;
 
+    private SkillData[]  _skills             = new SkillData[4];
+    private double[]     _skillCooldowns     = new double[4];
+    private ColorRect[]  _skillCooldownFills = new ColorRect[4];
+
     // ─────────────────────────────────────────────────────────────────────────
 
     public override void _Ready()
     {
         _fireboltScene = GD.Load<PackedScene>("res://scenes/Firebolt.tscn");
 
+        ClassStore.EnsureSkillsLoaded();
+        LoadSkillsFromClass();
+
         DeckStore.EnsureCardsLoaded();
+        DeckStore.LoadDecks();
         LoadDeckCards();
 
         var hud = new CanvasLayer();
@@ -61,17 +69,30 @@ public partial class BaseEncounter : Node2D
         }
     }
 
-    // ── Deck loading ──────────────────────────────────────────────────────────
+    // ── Deck / skill loading ──────────────────────────────────────────────────
+
+    private void LoadSkillsFromClass()
+    {
+        if (ClassStore.ActiveClass == null) return;
+        foreach (var entry in ClassStore.ActiveClass.Skills)
+        {
+            if (entry.Slot < 0 || entry.Slot >= HudSlots) continue;
+            _skills[entry.Slot] = ClassStore.AllSkills.Find(s => s.Id == entry.SkillId);
+        }
+    }
 
     private void LoadDeckCards()
     {
-        if (DeckStore.ActiveDeck == null) return;
+        DeckEntry activeDeck = null;
+        if (ClassStore.ActiveClass != null && ClassStore.ActiveClass.DeckName.Length > 0)
+            activeDeck = DeckStore.Decks.Find(d => d.Name == ClassStore.ActiveClass.DeckName);
+        if (activeDeck == null) return;
 
         var byId = new Dictionary<string, CardData>();
         foreach (var c in DeckStore.AllCards)
             byId[c.Id] = c;
 
-        var entries = new List<SlotEntry>(DeckStore.ActiveDeck.Slots);
+        var entries = new List<SlotEntry>(activeDeck.Slots);
         entries.Sort((a, b) => a.Slot.CompareTo(b.Slot));
 
         foreach (var entry in entries)
@@ -126,6 +147,8 @@ public partial class BaseEncounter : Node2D
 
         if (idx < 0) return;
 
+        if (_actionButtons[idx].Disabled) return;
+
         var btn = _actionButtons[idx];
         btn.AddThemeStyleboxOverride("normal", _actionStylePressed);
         btn.AddThemeStyleboxOverride("hover",  _actionStylePressed);
@@ -142,21 +165,49 @@ public partial class BaseEncounter : Node2D
     public override void _Process(double delta)
     {
         if (_slotCards[0] == null)
-        {
             _progressFill.Visible = false;
-            return;
+        else
+        {
+            _progressFill.Visible = true;
+            float useTime = Mathf.Max(_slotCards[0].UseTime, 0.01f);
+            _elapsed += delta;
+            float fraction = Mathf.Clamp((float)(_elapsed / useTime), 0f, 1f);
+            _progressFill.Size = new Vector2(CardW * fraction, _progressFill.Size.Y);
+            if (_elapsed >= useTime)
+                PlayCurrentCard();
         }
 
-        _progressFill.Visible = true;
+        for (int i = 0; i < 4; i++)
+        {
+            if (_skillCooldowns[i] <= 0.0) continue;
+            _skillCooldowns[i] -= delta;
+            if (_skillCooldowns[i] <= 0.0)
+            {
+                _skillCooldowns[i]             = 0.0;
+                _actionButtons[i].Disabled     = false;
+                _skillCooldownFills[i].Visible = false;
+                _skillCooldownFills[i].Size    = new Vector2(0f, _skillCooldownFills[i].Size.Y);
+            }
+            else
+            {
+                float elapsed  = (float)(_skills[i].Cooldown - _skillCooldowns[i]);
+                float fraction = Mathf.Clamp(elapsed / _skills[i].Cooldown, 0f, 1f);
+                _skillCooldownFills[i].Size = new Vector2(CardW * fraction, _skillCooldownFills[i].Size.Y);
+            }
+        }
+    }
 
-        float useTime = Mathf.Max(_slotCards[0].UseTime, 0.01f);
-        _elapsed += delta;
-
-        float fraction = Mathf.Clamp((float)(_elapsed / useTime), 0f, 1f);
-        _progressFill.Size = new Vector2(CardW * fraction, _progressFill.Size.Y);
-
-        if (_elapsed >= useTime)
-            PlayCurrentCard();
+    private void OnSkillActivated(int idx)
+    {
+        if (_skills[idx] == null) return;
+        if (_skillCooldowns[idx] > 0.0) return;
+        if (_skills[idx].Cooldown > 0f)
+        {
+            _skillCooldowns[idx]             = _skills[idx].Cooldown;
+            _actionButtons[idx].Disabled     = true;
+            _skillCooldownFills[idx].Size    = new Vector2(0f, _skillCooldownFills[idx].Size.Y);
+            _skillCooldownFills[idx].Visible = true;
+        }
     }
 
     private void PlayCurrentCard()
@@ -264,14 +315,17 @@ public partial class BaseEncounter : Node2D
 
         for (int i = 0; i < 4; i++)
         {
+            int capturedI = i;
+
             var btn = new Button();
             btn.Position = new Vector2(StartX + i * (CardW + Gap), y);
             btn.Size     = new Vector2(CardW, CardH);
-            btn.Text     = "";
+            btn.Text     = _skills[i]?.Name ?? "";
             btn.AddThemeStyleboxOverride("normal",  _actionStyleNormal);
             btn.AddThemeStyleboxOverride("hover",   _actionStyleHover);
             btn.AddThemeStyleboxOverride("pressed", _actionStylePressed);
             btn.AddThemeStyleboxOverride("focus",   _actionStyleNormal);
+            btn.Pressed  += () => OnSkillActivated(capturedI);
 
             var num = new Label();
             num.Text        = (i + 1).ToString();
@@ -284,6 +338,33 @@ public partial class BaseEncounter : Node2D
 
             _actionButtons[i] = btn;
             hud.AddChild(btn);
+        }
+
+        const int BarH   = 6;
+        const int BarGap = 3;
+        int barY = y + CardH + BarGap;
+
+        for (int i = 0; i < 4; i++)
+        {
+            float bx = StartX + i * (CardW + Gap);
+
+            var cooldownBg = new ColorRect();
+            cooldownBg.Position    = new Vector2(bx, barY);
+            cooldownBg.Size        = new Vector2(CardW, BarH);
+            cooldownBg.Color       = new Color(0.15f, 0.15f, 0.20f);
+            cooldownBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cooldownBg.Visible     = _skills[i] != null;
+            hud.AddChild(cooldownBg);
+
+            var cooldownFill = new ColorRect();
+            cooldownFill.Position    = new Vector2(bx, barY);
+            cooldownFill.Size        = new Vector2(0f, BarH);
+            cooldownFill.Color       = _skills[i]?.Color ?? new Color(0.30f, 0.65f, 1.00f);
+            cooldownFill.MouseFilter = Control.MouseFilterEnum.Ignore;
+            cooldownFill.Visible     = false;
+            hud.AddChild(cooldownFill);
+
+            _skillCooldownFills[i] = cooldownFill;
         }
     }
 
