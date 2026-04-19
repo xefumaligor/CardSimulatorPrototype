@@ -5,7 +5,11 @@ public partial class MainMenu : Control
     public override void _Ready()
     {
         GetNode<Button>("VBoxContainer/BtnWaves").Pressed          += OnWavesPressed;
+        GetNode<Button>("VBoxContainer/BtnCardManagement").Pressed  += () =>
+            GetTree().ChangeSceneToFile("res://scenes/CardListScreen.tscn");
         GetNode<Button>("VBoxContainer/BtnDeckManagement").Pressed  += OnDeckManagementPressed;
+        GetNode<Button>("VBoxContainer/BtnSkillManagement").Pressed += () =>
+            GetTree().ChangeSceneToFile("res://scenes/SkillListScreen.tscn");
         GetNode<Button>("VBoxContainer/BtnClassManagement").Pressed += () =>
             GetTree().ChangeSceneToFile("res://scenes/ClassListScreen.tscn");
         GetNode<Button>("VBoxContainer/BtnMobManagement").Pressed += () =>

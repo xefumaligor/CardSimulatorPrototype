@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cardeditor"]
+
+[ext_resource type="Script" path="res://scripts/CardEditor.cs" id="1_cardeditor"]
+
+[node name="CardEditor" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_cardeditor")

@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://c2fsht7iqciin"]
+
+[ext_resource type="Script" path="res://scripts/CardListScreen.cs" id="1_cardlist"]
+
+[node name="CardListScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_cardlist")

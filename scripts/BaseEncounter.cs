@@ -43,6 +43,18 @@ public partial class BaseEncounter : Node2D
     private double      _elapsed       = 0.0;
     private bool        _duplicateNextCard = false;
 
+    // ── Buffs / turn state ────────────────────────────────────────────────────
+
+    private List<ActiveBuff> _playerBuffs     = new();
+    private int              _turnNumber      = 0;
+    private bool             _turnActive      = false;
+    private float            _spellDamageMult = 1.0f;
+    private Control          _buffContainer;
+    private Panel            _tooltip;
+    private Label            _tooltipName;
+    private Label            _tooltipTags;
+    private Label            _tooltipDesc;
+
     private SkillData[]  _skills             = new SkillData[4];
     private double[]     _skillCooldowns     = new double[4];
     private ColorRect[]  _skillCooldownFills = new ColorRect[4];
@@ -320,8 +332,10 @@ public partial class BaseEncounter : Node2D
         for (int x = startX; x < endX; x += TileSize)
         for (int y = startY; y < endY; y += TileSize)
         {
-            bool even = (((x - startX) / TileSize) + ((y - startY) / TileSize)) % 2 == 0;
-            DrawRect(new Rect2(x, y, TileSize, TileSize), even ? TileA : TileB);
+            bool  even  = (((x - startX) / TileSize) + ((y - startY) / TileSize)) % 2 == 0;
+            float tileW = Mathf.Min(TileSize, endX - x);
+            float tileH = Mathf.Min(TileSize, endY - y);
+            DrawRect(new Rect2(x, y, tileW, tileH), even ? TileA : TileB);
         }
     }
 
@@ -399,6 +413,14 @@ public partial class BaseEncounter : Node2D
 
     public override void _Process(double delta)
     {
+        if (_tooltip != null && _tooltip.Visible)
+        {
+            var m   = GetViewport().GetMousePosition();
+            float x = Mathf.Clamp(m.X + 14, 0, 900 - _tooltip.Size.X);
+            float y = Mathf.Clamp(m.Y - _tooltip.Size.Y - 10, 0, 860 - _tooltip.Size.Y);
+            _tooltip.Position = new Vector2(x, y);
+        }
+
         if (_encounterOver) return;
 
         if (_slotCards[0] == null)
@@ -457,7 +479,15 @@ public partial class BaseEncounter : Node2D
     private void PlayCurrentCard()
     {
         if (_deckCards.Count == 0) return;
-        var played = _slotCards[0];
+        var played  = _slotCards[0];
+        bool isPower = played?.Tags.Contains("Power") ?? false;
+
+        if (_deckIndex == 0 && !_turnActive)
+        {
+            _turnNumber++;
+            _turnActive = true;
+            OnTurnStart();
+        }
 
         if (_duplicateNextCard && played != null)
         {
@@ -472,20 +502,228 @@ public partial class BaseEncounter : Node2D
             return;
         }
 
-        _deckIndex = (_deckIndex + 1) % _deckCards.Count;
+        if (isPower)
+        {
+            _deckCards.RemoveAt(_deckIndex);
+            if (_deckCards.Count > 0)
+            {
+                int prevIdx = _deckIndex;
+                _deckIndex %= _deckCards.Count;
+                if (_deckIndex == 0 && prevIdx > 0)
+                    OnTurnEnd();
+            }
+            else
+            {
+                _deckIndex = 0;
+            }
+        }
+        else
+        {
+            int prevIdx = _deckIndex;
+            _deckIndex = (_deckIndex + 1) % _deckCards.Count;
+            if (_deckIndex == 0 && prevIdx > 0)
+                OnTurnEnd();
+        }
+
         RefreshSlots();
         _elapsed = 0.0;
         _progressFill.Size = new Vector2(0f, _progressFill.Size.Y);
         SpawnCardEffect(played);
     }
 
+    private void OnTurnStart()
+    {
+        foreach (var buff in _playerBuffs)
+            if (buff.Data.Effect == BuffEffectType.SpellDamageMultiplier)
+                _spellDamageMult *= buff.Data.Value;
+    }
+
+    private void OnTurnEnd()
+    {
+        _turnActive = false;
+        for (int i = _playerBuffs.Count - 1; i >= 0; i--)
+        {
+            var b = _playerBuffs[i];
+            if (b.RemainingTurns < 0) continue;
+            b.RemainingTurns--;
+            if (b.RemainingTurns <= 0)
+                _playerBuffs.RemoveAt(i);
+        }
+        RefreshBuffDisplay();
+    }
+
+    // ── Buff display ──────────────────────────────────────────────────────────
+
+    private const int BuffSquare = 28;
+    private const int BuffBarH   = 4;
+    private const int BuffGap    = 4;
+
+    private void BuildBuffDisplay(CanvasLayer hud)
+    {
+        // Anchored just above the skill buttons (x=80, y=780 − square − bar − gaps).
+        const int StartX = 80;
+        int       startY = 780 - BuffSquare - BuffBarH - BuffGap * 2;
+
+        _buffContainer             = new Control();
+        _buffContainer.Position    = new Vector2(StartX, startY);
+        _buffContainer.MouseFilter = Control.MouseFilterEnum.Ignore;
+        hud.AddChild(_buffContainer);
+    }
+
+    private void RefreshBuffDisplay()
+    {
+        if (_buffContainer == null) return;
+
+        foreach (Node child in _buffContainer.GetChildren())
+        {
+            _buffContainer.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        int x = 0;
+        foreach (var buff in _playerBuffs)
+        {
+            var square = new ColorRect();
+            square.Position    = new Vector2(x, 0);
+            square.Size        = new Vector2(BuffSquare, BuffSquare);
+            square.Color       = buff.Data.Color;
+            square.MouseFilter = Control.MouseFilterEnum.Pass;
+            var capturedBuff   = buff;
+            square.MouseEntered += () => ShowTooltip(capturedBuff.Data.Name, capturedBuff.Data.Description);
+            square.MouseExited  += HideTooltip;
+            _buffContainer.AddChild(square);
+
+            if (buff.RemainingTurns >= 0)
+            {
+                float fraction = buff.Data.Duration > 0
+                    ? Mathf.Clamp((float)buff.RemainingTurns / buff.Data.Duration, 0f, 1f)
+                    : 0f;
+
+                var barBg = new ColorRect();
+                barBg.Position    = new Vector2(x, BuffSquare + BuffGap);
+                barBg.Size        = new Vector2(BuffSquare, BuffBarH);
+                barBg.Color       = new Color(0.10f, 0.10f, 0.15f);
+                barBg.MouseFilter = Control.MouseFilterEnum.Ignore;
+                _buffContainer.AddChild(barBg);
+
+                var barFill = new ColorRect();
+                barFill.Position    = new Vector2(x, BuffSquare + BuffGap);
+                barFill.Size        = new Vector2(BuffSquare * fraction, BuffBarH);
+                barFill.Color       = buff.Data.Color;
+                barFill.MouseFilter = Control.MouseFilterEnum.Ignore;
+                _buffContainer.AddChild(barFill);
+            }
+
+            x += BuffSquare + BuffGap;
+        }
+    }
+
+    private void ApplyBuff(ActiveBuff buff)
+    {
+        _playerBuffs.Add(buff);
+        RefreshBuffDisplay();
+    }
+
     private void SpawnCardEffect(CardData card)
     {
         if (card == null) return;
-        if (card.Id == "firebolt") SpawnPlayerFirebolt();
+        if (card.Id == "firebolt")  SpawnPlayerFirebolt(card);
+        if (card.Id == "mysticism") ApplyMysticismBuff();
+        if (card.Id == "cleave")    SpawnPlayerCleave(card);
     }
 
-    private void SpawnPlayerFirebolt()
+    private void SpawnPlayerCleave(CardData card)
+    {
+        var player   = GetNode<Node2D>("Player");
+        var origin   = player.GlobalPosition;
+        var dir      = (GetGlobalMousePosition() - origin).Normalized();
+
+        int damage = card.Tags.Contains("Spell") ? (int)(15 * _spellDamageMult) : 15;
+
+        var cleave = new CleaveAttack { Damage = damage };
+        AddChild(cleave);
+        cleave.Init(origin, dir, _mobs);
+    }
+
+    private void ApplyMysticismBuff()
+    {
+        ApplyBuff(new ActiveBuff(new BuffData
+        {
+            Id          = "mysticism",
+            Name        = "Mysticism",
+            Duration    = -1,
+            Effect      = BuffEffectType.SpellDamageMultiplier,
+            Value       = 2.0f,
+            Color       = new Color(0.6f, 0.20f, 0.90f),
+            Description = "At the start of each turn, doubles all spell card damage (stacks every turn).",
+        }));
+    }
+
+    // ── Tooltip ───────────────────────────────────────────────────────────────
+
+    private void BuildTooltip(CanvasLayer hud)
+    {
+        const int W = 220;
+        const int H = 95;
+
+        var style = new StyleBoxFlat();
+        style.BgColor     = new Color(0.06f, 0.06f, 0.12f, 0.20f);
+        style.BorderColor = new Color(0.55f, 0.55f, 0.70f, 0.35f);
+        style.SetBorderWidthAll(1);
+        style.CornerRadiusTopLeft = style.CornerRadiusTopRight =
+        style.CornerRadiusBottomLeft = style.CornerRadiusBottomRight = 4;
+
+        _tooltip = new Panel();
+        _tooltip.Size        = new Vector2(W, H);
+        _tooltip.Visible     = false;
+        _tooltip.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _tooltip.ZIndex      = 200;
+        _tooltip.AddThemeStyleboxOverride("panel", style);
+        hud.AddChild(_tooltip);
+
+        _tooltipName = new Label();
+        _tooltipName.Position = new Vector2(8, 7);
+        _tooltipName.Size     = new Vector2(W - 16, 20);
+        _tooltipName.AddThemeColorOverride("font_color",   Colors.White);
+        _tooltipName.AddThemeFontSizeOverride("font_size", 13);
+        _tooltipName.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _tooltip.AddChild(_tooltipName);
+
+        _tooltipTags = new Label();
+        _tooltipTags.Position    = new Vector2(8, 27);
+        _tooltipTags.Size        = new Vector2(W - 16, 14);
+        _tooltipTags.AddThemeColorOverride("font_color",   new Color(0.55f, 0.75f, 0.90f));
+        _tooltipTags.AddThemeFontSizeOverride("font_size", 10);
+        _tooltipTags.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _tooltipTags.Visible     = false;
+        _tooltip.AddChild(_tooltipTags);
+
+        _tooltipDesc = new Label();
+        _tooltipDesc.Position     = new Vector2(8, 44);
+        _tooltipDesc.Size         = new Vector2(W - 16, H - 50);
+        _tooltipDesc.AutowrapMode = TextServer.AutowrapMode.Word;
+        _tooltipDesc.AddThemeColorOverride("font_color",   new Color(0.80f, 0.80f, 0.80f));
+        _tooltipDesc.AddThemeFontSizeOverride("font_size", 11);
+        _tooltipDesc.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _tooltip.AddChild(_tooltipDesc);
+    }
+
+    private void ShowTooltip(string name, string desc, string tags = "")
+    {
+        if (_tooltip == null) return;
+        _tooltipName.Text    = name;
+        _tooltipTags.Text    = tags ?? "";
+        _tooltipTags.Visible = !string.IsNullOrEmpty(tags);
+        _tooltipDesc.Text    = desc ?? "";
+        _tooltip.Visible     = true;
+    }
+
+    private void HideTooltip()
+    {
+        if (_tooltip != null) _tooltip.Visible = false;
+    }
+
+    private void SpawnPlayerFirebolt(CardData card)
     {
         var player   = GetNode<Node2D>("Player");
         var origin   = player.GlobalPosition;
@@ -495,6 +733,8 @@ public partial class BaseEncounter : Node2D
         var bolt = _fireboltScene.Instantiate<Firebolt>();
         bolt.IsPlayerOwned = true;
         bolt.Damage        = 10;
+        if (card.Tags.Contains("Spell"))
+            bolt.Damage = (int)(bolt.Damage * _spellDamageMult);
         AddChild(bolt);
         bolt.Init(dir, origin);
     }
@@ -512,6 +752,9 @@ public partial class BaseEncounter : Node2D
             var panel = CreateSlotPanel(startX + i * (CardW + Gap), y);
             UpdateSlotVisual(panel, _slotCards[i]);
             _hudPanels[i] = panel;
+            int ci = i;
+            panel.MouseEntered += () => { var c = _slotCards[ci]; if (c != null) ShowTooltip(c.Name, c.Text, string.Join(", ", c.Tags)); };
+            panel.MouseExited  += HideTooltip;
             hud.AddChild(panel);
         }
 
@@ -534,6 +777,8 @@ public partial class BaseEncounter : Node2D
         hud.AddChild(_progressFill);
 
         BuildActionButtons(hud, y);
+        BuildBuffDisplay(hud);
+        BuildTooltip(hud);
     }
 
     private void BuildActionButtons(CanvasLayer hud, int y)
@@ -573,7 +818,9 @@ public partial class BaseEncounter : Node2D
             btn.AddThemeStyleboxOverride("hover",   _actionStyleHover);
             btn.AddThemeStyleboxOverride("pressed", _actionStylePressed);
             btn.AddThemeStyleboxOverride("focus",   _actionStyleNormal);
-            btn.Pressed  += () => OnSkillActivated(capturedI);
+            btn.Pressed       += () => OnSkillActivated(capturedI);
+            btn.MouseEntered  += () => { var s = _skills[capturedI]; if (s != null) ShowTooltip(s.Name, s.Description); };
+            btn.MouseExited   += HideTooltip;
 
             var num = new Label();
             num.Text        = (i + 1).ToString();

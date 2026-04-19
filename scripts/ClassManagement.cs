@@ -16,6 +16,7 @@ public partial class ClassManagement : Control
     private SkillData[] _selectedSlots   = new SkillData[MaxSkills];
     private Panel[]     _selectedPanels  = new Panel[MaxSkills];
 
+    private Tooltip      _tooltip;
     private SkillData    _heldSkill;
     private Control      _heldSkillDisplay;
     private Label        _heldSkillLabel;
@@ -189,7 +190,9 @@ public partial class ClassManagement : Control
                 CardW, CardH);
 
             int idx = i;
-            panel.GuiInput += (InputEvent e) => OnCatalogueSlotInput(e, idx);
+            panel.GuiInput    += (InputEvent e) => OnCatalogueSlotInput(e, idx);
+            panel.MouseEntered += () => { var s = _catalogueSlots[idx]; if (s != null) _tooltip?.Show(s.Name, s.Description); };
+            panel.MouseExited  += () => _tooltip?.Hide();
             _cataloguePanels[i] = panel;
             AddChild(panel);
             UpdateSkillVisual(panel, _catalogueSlots[i]);
@@ -207,7 +210,9 @@ public partial class ClassManagement : Control
                 CardW, CardH);
 
             int idx = i;
-            panel.GuiInput += (InputEvent e) => OnSelectedSlotInput(e, idx);
+            panel.GuiInput    += (InputEvent e) => OnSelectedSlotInput(e, idx);
+            panel.MouseEntered += () => { var s = _selectedSlots[idx]; if (s != null) _tooltip?.Show(s.Name, s.Description); };
+            panel.MouseExited  += () => _tooltip?.Hide();
             _selectedPanels[i] = panel;
             AddChild(panel);
             UpdateSkillVisual(panel, _selectedSlots[i]);
@@ -295,6 +300,9 @@ public partial class ClassManagement : Control
         _heldSkillLabel.AddThemeFontSizeOverride("font_size", 11);
         _heldSkillLabel.MouseFilter = MouseFilterEnum.Ignore;
         _heldSkillDisplay.AddChild(_heldSkillLabel);
+
+        _tooltip = new Tooltip();
+        AddChild(_tooltip);
     }
 
     // ── Input handling ────────────────────────────────────────────────────────
@@ -304,6 +312,7 @@ public partial class ClassManagement : Control
         if (_heldSkill != null)
             _heldSkillDisplay.Position =
                 GetLocalMousePosition() - new Vector2(CardW / 2f, CardH / 2f);
+        _tooltip?.UpdatePosition(GetViewport().GetMousePosition());
     }
 
     private void OnCatalogueSlotInput(InputEvent e, int index)

@@ -3,20 +3,22 @@ using Godot;
 
 public class SkillData
 {
-    public string Id       { get; set; }
-    public string Name     { get; set; }
-    public float  Cooldown { get; set; }
-    public Color  Color    { get; set; }
+    public string Id          { get; set; }
+    public string Name        { get; set; }
+    public string Description { get; set; }
+    public float  Cooldown    { get; set; }
+    public Color  Color       { get; set; }
 
-    public SkillData(string id, string name, float cooldown, Color color)
+    public SkillData(string id, string name, string description, float cooldown, Color color)
     {
-        Id       = id;
-        Name     = name;
-        Cooldown = cooldown;
-        Color    = color;
+        Id          = id;
+        Name        = name;
+        Description = description;
+        Cooldown    = cooldown;
+        Color       = color;
     }
 
-    public SkillData Clone() => new SkillData(Id, Name, Cooldown, Color);
+    public SkillData Clone() => new SkillData(Id, Name, Description, Cooldown, Color);
 }
 
 public class ClassEntry
