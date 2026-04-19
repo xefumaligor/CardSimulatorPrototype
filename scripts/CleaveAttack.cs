@@ -25,9 +25,10 @@ public partial class CleaveAttack : Node2D
         GlobalPosition = origin;
         Rotation       = direction.Angle();
 
-        float minDot = Mathf.Cos(Mathf.DegToRad(ArcDegrees / 2f));
+        float minDot  = Mathf.Cos(Mathf.DegToRad(ArcDegrees / 2f));
+        var   targets = new List<MobActor>(mobs);
 
-        foreach (var mob in mobs)
+        foreach (var mob in targets)
         {
             if (!IsInstanceValid(mob)) continue;
             var   toMob = mob.GlobalPosition - origin;
@@ -36,6 +37,19 @@ public partial class CleaveAttack : Node2D
             if (dist <= Range && dot >= minDot)
                 mob.TakeDamage(Damage);
         }
+    }
+
+    public void Init(Vector2 origin, Vector2 direction, Node2D player)
+    {
+        GlobalPosition = origin;
+        Rotation       = direction.Angle();
+
+        float minDot    = Mathf.Cos(Mathf.DegToRad(ArcDegrees / 2f));
+        var   toPlayer  = player.GlobalPosition - origin;
+        float dist      = toPlayer.Length();
+        float dot       = dist > 0f ? toPlayer.Normalized().Dot(direction) : 0f;
+        if (dist <= Range && dot >= minDot)
+            GetParent<BaseEncounter>()?.OnPlayerHit(Damage);
     }
 
     private static Polygon2D BuildFanPolygon(float range, float arcDegrees)

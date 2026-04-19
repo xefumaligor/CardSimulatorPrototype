@@ -16,8 +16,13 @@ public partial class CardEditor : Control
     {
         ["firebolt"]  = new[] { (1, "Damage"), (2, "Projectile Size"), (3, "Projectile Speed") },
         ["fireball"]  = new[] { (1, "Damage"), (2, "Projectile Size"), (3, "Projectile Speed"), (4, "Blast / Ground Radius"), (5, "Burn Duration (s)") },
-        ["cleave"]    = new[] { (1, "Damage"), (2, "Arc Radius"), (3, "Arc Degrees") },
-        ["mysticism"] = new[] { (1, "Spell Damage Multiplier") },
+        ["cleave"]     = new[] { (1, "Damage"), (2, "Arc Radius"), (3, "Arc Degrees") },
+        ["whirlwind"]  = new[] { (1, "Damage per Second"), (2, "Area Radius"), (3, "Duration (s)") },
+        ["mysticism"]  = new[] { (1, "Spell Damage Multiplier") },
+        ["holyprayer"]  = new[] { (1, "Heal Amount") },
+        ["mobheal"]     = new[] { (1, "Heal Amount") },
+        ["greateraoe"]    = new[] { (1, "Area Increase (%)") },
+        ["greaterattack"] = new[] { (1, "Damage Increase (%)") },
     };
 
     public override void _Ready()

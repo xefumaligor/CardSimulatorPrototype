@@ -5,8 +5,18 @@
    "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
   {"Id": "mysticism",  "Name": "Mysticism",   "Text": "Permanently double your spell damage at the start of each turn.", "R": 0.6, "G": 0.20, "B": 0.90, "UseTime": 1.0, "Tags": ["Power"],
    "Values": [2, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
-  {"Id": "cleave",     "Name": "Cleave",      "Text": "Slash in a 180° arc dealing damage to all enemies in front.",   "R": 0.9, "G": 0.65, "B": 0.10, "UseTime": 0.5, "Tags": ["Attack", "Physical"],
+  {"Id": "cleave",     "Name": "Cleave",      "Text": "Slash in a 180° arc dealing damage to all enemies in front.",   "R": 0.9, "G": 0.65, "B": 0.10, "UseTime": 0.5, "Tags": ["Attack", "Physical", "Area"],
    "Values": [15, 150, 180, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "whirlwind",  "Name": "Whirlwind",  "Text": "Spin in a 360° area for 3 seconds, dealing 10 damage per second to all nearby enemies.", "R": 0.55, "G": 0.85, "B": 1.0, "UseTime": 1.0, "Tags": ["Attack", "Physical", "Area"],
+   "Values": [10, 100, 3, 0, 0, 0, 0, 0, 0, 0]},
   {"Id": "fireball",   "Name": "Fireball",    "Text": "Launch a fireball that explodes on impact, dealing area damage and leaving burning ground. Enemies on the fire take 2 damage per second.", "R": 1.0, "G": 0.35, "B": 0.00, "UseTime": 1.5, "Tags": ["Attack", "Spell", "Fire", "Area"],
-   "Values": [5, 8, 400, 80, 5, 0, 0, 0, 0, 0]}
+   "Values": [5, 8, 400, 80, 5, 0, 0, 0, 0, 0]},
+  {"Id": "holyprayer", "Name": "Holy Prayer", "Text": "Restore health to yourself.", "R": 0.9, "G": 0.9, "B": 0.3, "UseTime": 2.0, "Tags": ["Spell"],
+   "Values": [20, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "mobheal",    "Name": "Mob Heal",    "Text": "Heal the most wounded ally for a large amount.", "R": 0.3, "G": 0.85, "B": 0.5, "UseTime": 1.0, "Tags": ["Spell"],
+   "Values": [20, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "greateraoe",    "Name": "Greater Area of Effect", "Text": "The next Area card played this turn has increased area of effect.", "R": 0.4, "G": 0.9, "B": 0.4, "UseTime": 0.5, "Tags": ["Ability"],
+   "Values": [100, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "greaterattack", "Name": "Greater Attack Damage", "Text": "The next Attack card played this turn deals increased damage.", "R": 0.9, "G": 0.5, "B": 0.1, "UseTime": 0.5, "Tags": ["Ability"],
+   "Values": [100, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
 ]

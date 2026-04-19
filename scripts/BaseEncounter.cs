@@ -20,7 +20,8 @@ public partial class BaseEncounter : Node2D
 
     // ── Player health ─────────────────────────────────────────────────────────
 
-    private HealthBar _playerHealthBar;
+    private ColorRect _playerHpFill;
+    private Label     _playerHpLabel;
 
     // ── Mobs ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,9 @@ public partial class BaseEncounter : Node2D
     private List<ActiveBuff> _playerBuffs     = new();
     private int              _turnNumber      = 0;
     private bool             _turnActive      = false;
-    private float            _spellDamageMult = 1.0f;
+    private float            _spellDamageMult  = 1.0f;
+    private float            _aoeAreaMult      = 1.0f;
+    private float            _attackDamageMult = 1.0f;
     private Control          _buffContainer;
     private Panel            _tooltip;
     private Label            _tooltipName;
@@ -60,7 +63,9 @@ public partial class BaseEncounter : Node2D
     private ColorRect[]  _skillCooldownFills = new ColorRect[4];
 
     private CanvasLayer _hud;
-    private bool        _encounterOver = false;
+    private bool        _encounterOver    = false;
+    private bool        _burnHover        = false;
+    private bool        _playerWasBurning = false;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -87,10 +92,6 @@ public partial class BaseEncounter : Node2D
         var player = GetNode<Node2D>("Player");
         player.GlobalPosition = RandomPlayerPosition();
 
-        _playerHealthBar          = new HealthBar();
-        _playerHealthBar.Position = new Vector2(0, -28);
-        _playerHealthBar.Init(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
-        player.AddChild(_playerHealthBar);
 
         SpawnMobs(player);
 
@@ -166,7 +167,7 @@ public partial class BaseEncounter : Node2D
             var pos  = RandomMobPosition(usedPositions);
             var deck = BuildDeckFromName(entry.DeckName);
             var mob  = new MobActor();
-            mob.InitData(entry, deck, player, _fireboltScene);
+            mob.InitData(entry, deck, player, _fireboltScene, _mobs);
             mob.OnDied += m => OnMobDied(m);
             AddChild(mob);
             mob.GlobalPosition = pos;
@@ -232,9 +233,10 @@ public partial class BaseEncounter : Node2D
             if (IsInstanceValid(mob)) mob.ProcessMode = ProcessModeEnum.Disabled;
         foreach (var child in GetChildren())
         {
-            if (child is Firebolt bolt)             bolt.ProcessMode = ProcessModeEnum.Disabled;
-            if (child is Fireball fb)               fb.ProcessMode   = ProcessModeEnum.Disabled;
-            if (child is BurningGroundEffect bge)   bge.ProcessMode  = ProcessModeEnum.Disabled;
+            if (child is Firebolt bolt)             bolt.ProcessMode      = ProcessModeEnum.Disabled;
+            if (child is Fireball fb)               fb.ProcessMode        = ProcessModeEnum.Disabled;
+            if (child is BurningGroundEffect bge)   bge.ProcessMode       = ProcessModeEnum.Disabled;
+            if (child is WhirlwindEffect ww)        ww.ProcessMode        = ProcessModeEnum.Disabled;
         }
     }
 
@@ -294,12 +296,20 @@ public partial class BaseEncounter : Node2D
             return;
         }
 
+        var currentName = RunState.CurrentEncounter?.Name ?? "";
+        bool currentIsLevel = currentName.StartsWith("Level", System.StringComparison.OrdinalIgnoreCase);
+        if (!currentIsLevel)
+        {
+            GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+            return;
+        }
+
         EncounterStore.LoadEncounters();
         int nextIndex = RunState.EncounterIndex + 1;
         string nextName = $"Level{nextIndex}";
-        var next = EncounterStore.Encounters.Find(e => e.Name == nextName);
+        var next = EncounterStore.Encounters.Find(e => string.Equals(e.Name, nextName, System.StringComparison.OrdinalIgnoreCase));
         if (next == null)
-            next = EncounterStore.Encounters.Find(e => e.Name == "boss");
+            next = EncounterStore.Encounters.Find(e => !e.Name.StartsWith("Level", System.StringComparison.OrdinalIgnoreCase));
 
         if (next != null)
         {
@@ -319,7 +329,7 @@ public partial class BaseEncounter : Node2D
     {
         if (_encounterOver) return;
         RunState.PlayerCurrentHp = Mathf.Max(0, RunState.PlayerCurrentHp - damage);
-        _playerHealthBar?.Update(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
+        UpdatePlayerHpBar();
         if (RunState.PlayerCurrentHp <= 0)
             ShowResultModal(victory: false);
     }
@@ -392,12 +402,6 @@ public partial class BaseEncounter : Node2D
             _        => -1,
         };
 
-        if (key.Keycode == Key.Escape)
-        {
-            GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
-            return;
-        }
-
         if (idx < 0 || _encounterOver) return;
 
         if (_actionButtons[idx].Disabled) return;
@@ -424,6 +428,25 @@ public partial class BaseEncounter : Node2D
             float y = Mathf.Clamp(m.Y - _tooltip.Size.Y - 10, 0, 860 - _tooltip.Size.Y);
             _tooltip.Position = new Vector2(x, y);
         }
+
+        var playerNode  = GetNode<Player>("Player");
+        bool nowBurning = playerNode.IsBurning;
+        if (nowBurning != _playerWasBurning)
+        {
+            _playerWasBurning = nowBurning;
+            RefreshBuffDisplay();
+        }
+
+        var mouseWorld = GetGlobalMousePosition();
+        bool nearBurn  = false;
+        foreach (var mob in _mobs)
+        {
+            if (!IsInstanceValid(mob) || !mob.IsBurning) continue;
+            if (mouseWorld.DistanceTo(mob.GlobalPosition + new Vector2(12f, -34f)) <= 10f)
+            { nearBurn = true; break; }
+        }
+        if (nearBurn && !_burnHover)      { _burnHover = true;  ShowTooltip("Burning", "Deals 2 damage per second."); }
+        else if (!nearBurn && _burnHover) { _burnHover = false; HideTooltip(); }
 
         if (_encounterOver) return;
 
@@ -544,7 +567,9 @@ public partial class BaseEncounter : Node2D
 
     private void OnTurnEnd()
     {
-        _turnActive = false;
+        _turnActive       = false;
+        _aoeAreaMult      = 1.0f;
+        _attackDamageMult = 1.0f;
         for (int i = _playerBuffs.Count - 1; i >= 0; i--)
         {
             var b = _playerBuffs[i];
@@ -620,6 +645,18 @@ public partial class BaseEncounter : Node2D
 
             x += BuffSquare + BuffGap;
         }
+
+        if (_playerWasBurning)
+        {
+            var square = new ColorRect();
+            square.Position    = new Vector2(x, 0);
+            square.Size        = new Vector2(BuffSquare, BuffSquare);
+            square.Color       = new Color(1f, 0.4f, 0.0f);
+            square.MouseFilter = Control.MouseFilterEnum.Pass;
+            square.MouseEntered += () => ShowTooltip("Burning", "Deals 2 damage per second.");
+            square.MouseExited  += HideTooltip;
+            _buffContainer.AddChild(square);
+        }
     }
 
     private void ApplyBuff(ActiveBuff buff)
@@ -631,10 +668,39 @@ public partial class BaseEncounter : Node2D
     private void SpawnCardEffect(CardData card)
     {
         if (card == null) return;
-        if (card.Id == "firebolt")  SpawnPlayerFirebolt(card);
-        if (card.Id == "fireball")  SpawnPlayerFireball(card);
-        if (card.Id == "mysticism") ApplyMysticismBuff(card);
-        if (card.Id == "cleave")    SpawnPlayerCleave(card);
+        if (card.Id == "firebolt")    SpawnPlayerFirebolt(card);
+        if (card.Id == "fireball")    SpawnPlayerFireball(card);
+        if (card.Id == "mysticism")   ApplyMysticismBuff(card);
+        if (card.Id == "cleave")      SpawnPlayerCleave(card);
+        if (card.Id == "whirlwind")   SpawnPlayerWhirlwind(card);
+        if (card.Id == "holyprayer")  HealPlayer(card);
+        if (card.Id == "mobheal")     HealMostWoundedMob(card);
+        if (card.Id == "greateraoe")    _aoeAreaMult      *= 1f + card.GetValue(1, 100f) / 100f;
+        if (card.Id == "greaterattack") _attackDamageMult *= 1f + card.GetValue(1, 100f) / 100f;
+
+        bool isArea   = card.Tags.Contains("Area")   || card.Id is "fireball" or "whirlwind" or "cleave";
+        bool isAttack = card.Tags.Contains("Attack") || card.Id is "firebolt" or "fireball" or "cleave" or "whirlwind";
+        if (isArea)   _aoeAreaMult     = 1.0f;
+        if (isAttack) _attackDamageMult = 1.0f;
+    }
+
+    private void SpawnPlayerWhirlwind(CardData card)
+    {
+        var player = GetNode<Node2D>("Player");
+
+        int baseDamage = (int)card.GetValue(1, 10);
+        int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
+        damage         = (int)(damage * _attackDamageMult);
+
+        var whirlwind = new WhirlwindEffect
+        {
+            IsPlayerOwned = true,
+            Damage        = damage,
+            Radius        = card.GetValue(2, 100f) * _aoeAreaMult,
+            Duration      = card.GetValue(3, 3f),
+            OwnerRef      = player,
+        };
+        AddChild(whirlwind);
     }
 
     private void SpawnPlayerCleave(CardData card)
@@ -645,11 +711,12 @@ public partial class BaseEncounter : Node2D
 
         int baseDamage = (int)card.GetValue(1, 15);
         int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
+        damage         = (int)(damage * _attackDamageMult);
 
         var cleave = new CleaveAttack
         {
             Damage     = damage,
-            Range      = card.GetValue(2, 150f),
+            Range      = card.GetValue(2, 150f) * _aoeAreaMult,
             ArcDegrees = card.GetValue(3, 180f),
         };
         AddChild(cleave);
@@ -743,6 +810,7 @@ public partial class BaseEncounter : Node2D
 
         int baseDamage = (int)card.GetValue(1, 5);
         int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
+        damage         = (int)(damage * _attackDamageMult);
 
         var fireball = new Fireball
         {
@@ -750,12 +818,33 @@ public partial class BaseEncounter : Node2D
             AreaDamage       = damage,
             ProjectileRadius = card.GetValue(2, 8f),
             ProjectileSpeed  = card.GetValue(3, 400f),
-            BlastRadius      = card.GetValue(4, 80f),
+            BlastRadius      = card.GetValue(4, 80f) * _aoeAreaMult,
             BurnDuration     = card.GetValue(5, 5f),
             Mobs             = _mobs,
         };
         AddChild(fireball);
         fireball.Init(dir, origin);
+    }
+
+    private void HealPlayer(CardData card)
+    {
+        int amount = (int)card.GetValue(1, 20);
+        RunState.PlayerCurrentHp = Mathf.Min(RunState.PlayerMaxHp, RunState.PlayerCurrentHp + amount);
+        UpdatePlayerHpBar();
+    }
+
+    private void HealMostWoundedMob(CardData card)
+    {
+        int amount = (int)card.GetValue(1, 20);
+        MobActor target   = null;
+        int      mostMissing = -1;
+        foreach (var mob in _mobs)
+        {
+            if (!IsInstanceValid(mob)) continue;
+            int missing = mob.MaxHp - mob.CurrentHp;
+            if (missing > mostMissing) { mostMissing = missing; target = mob; }
+        }
+        target?.Heal(amount);
     }
 
     private void SpawnPlayerFirebolt(CardData card)
@@ -766,6 +855,7 @@ public partial class BaseEncounter : Node2D
 
         int baseDamage = (int)card.GetValue(1, 10);
         int damage     = card.Tags.Contains("Spell") ? (int)(baseDamage * _spellDamageMult) : baseDamage;
+        damage         = (int)(damage * _attackDamageMult);
 
         var bolt = _fireboltScene.Instantiate<Firebolt>();
         bolt.IsPlayerOwned    = true;
@@ -774,6 +864,57 @@ public partial class BaseEncounter : Node2D
         bolt.ProjectileSpeed  = card.GetValue(3, 0f);
         AddChild(bolt);
         bolt.Init(dir, origin);
+    }
+
+    // ── Player HP bar (vertical, left side) ──────────────────────────────────
+
+    private const int HpBarX   = 10;
+    private const int HpBarW   = 20;
+    private const int HpBarTop = 100;
+    private const int HpBarBot = 800;
+
+    private void BuildPlayerHpBar(CanvasLayer hud)
+    {
+        int h = HpBarBot - HpBarTop;
+
+        var bg = new ColorRect();
+        bg.Position    = new Vector2(HpBarX, HpBarTop);
+        bg.Size        = new Vector2(HpBarW, h);
+        bg.Color       = new Color(0.20f, 0.06f, 0.06f);
+        bg.MouseFilter = Control.MouseFilterEnum.Ignore;
+        hud.AddChild(bg);
+
+        _playerHpFill              = new ColorRect();
+        _playerHpFill.Position     = new Vector2(HpBarX, HpBarTop);
+        _playerHpFill.Size         = new Vector2(HpBarW, h);
+        _playerHpFill.Color        = new Color(0.18f, 0.75f, 0.18f);
+        _playerHpFill.MouseFilter  = Control.MouseFilterEnum.Ignore;
+        hud.AddChild(_playerHpFill);
+
+        _playerHpLabel                        = new Label();
+        _playerHpLabel.Position               = new Vector2(HpBarX - 2, HpBarBot + 4);
+        _playerHpLabel.Size                   = new Vector2(HpBarW + 4, 20);
+        _playerHpLabel.HorizontalAlignment    = HorizontalAlignment.Center;
+        _playerHpLabel.AddThemeColorOverride("font_color",   Colors.White);
+        _playerHpLabel.AddThemeFontSizeOverride("font_size", 10);
+        _playerHpLabel.MouseFilter            = Control.MouseFilterEnum.Ignore;
+        hud.AddChild(_playerHpLabel);
+
+        UpdatePlayerHpBar();
+    }
+
+    private void UpdatePlayerHpBar()
+    {
+        if (_playerHpFill == null) return;
+        int   h        = HpBarBot - HpBarTop;
+        float fraction = RunState.PlayerMaxHp > 0
+            ? Mathf.Clamp((float)RunState.PlayerCurrentHp / RunState.PlayerMaxHp, 0f, 1f)
+            : 0f;
+        float fillH = h * fraction;
+        _playerHpFill.Position = new Vector2(HpBarX, HpBarBot - fillH);
+        _playerHpFill.Size     = new Vector2(HpBarW, fillH);
+        if (_playerHpLabel != null)
+            _playerHpLabel.Text = $"{RunState.PlayerCurrentHp}/{RunState.PlayerMaxHp}";
     }
 
     // ── HUD construction ──────────────────────────────────────────────────────
@@ -816,6 +957,7 @@ public partial class BaseEncounter : Node2D
         BuildActionButtons(hud, y);
         BuildBuffDisplay(hud);
         BuildTooltip(hud);
+        BuildPlayerHpBar(hud);
     }
 
     private void BuildActionButtons(CanvasLayer hud, int y)

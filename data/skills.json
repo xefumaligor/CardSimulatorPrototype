@@ -1,6 +1,4 @@
 [
-  {"Id": "test",      "Name": "Test",      "Description": "", "Cooldown": 5.0, "R": 0.0,  "G": 0.30, "B": 1.0,
-   "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
   {"Id": "duplicate", "Name": "Duplicate", "Description": "", "Cooldown": 5.0, "R": 0.53, "G": 0.81, "B": 0.98,
    "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
 ]

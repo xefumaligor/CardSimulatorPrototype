@@ -5,6 +5,7 @@ public partial class MobManagement : Control
     private LineEdit          _nameInput;
     private ColorPickerButton _colorPicker;
     private SpinBox           _sizeInput;
+    private SpinBox           _speedInput;
     private SpinBox           _healthInput;
     private OptionButton      _behaviorDropdown;
     private OptionButton      _deckDropdown;
@@ -75,8 +76,25 @@ public partial class MobManagement : Control
         _sizeInput.MinValue    = 1;
         _sizeInput.MaxValue    = 9999;
         _sizeInput.Step        = 1;
-        _sizeInput.Value       = existing != null ? existing.Size : 1;
+        _sizeInput.Value       = existing != null ? existing.Size : 30;
         AddChild(_sizeInput);
+        y += 50;
+
+        // Speed row
+        var speedLabel = new Label();
+        speedLabel.Text     = "Speed:";
+        speedLabel.Position = new Vector2(x, y + 6);
+        speedLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f));
+        AddChild(speedLabel);
+
+        _speedInput          = new SpinBox();
+        _speedInput.Position = new Vector2(x + 105, y);
+        _speedInput.Size     = new Vector2(120, 30);
+        _speedInput.MinValue = 0;
+        _speedInput.MaxValue = 9999;
+        _speedInput.Step     = 1;
+        _speedInput.Value    = existing != null ? existing.Speed : 90;
+        AddChild(_speedInput);
         y += 50;
 
         // Health row
@@ -170,6 +188,7 @@ public partial class MobManagement : Control
             G            = color.G,
             B            = color.B,
             Size         = (int)_sizeInput.Value,
+            Speed        = (float)_speedInput.Value,
             Health       = (int)_healthInput.Value,
             BehaviorName = _behaviorDropdown.GetItemText(_behaviorDropdown.Selected),
             DeckName     = _deckDropdown.GetItemText(_deckDropdown.Selected),

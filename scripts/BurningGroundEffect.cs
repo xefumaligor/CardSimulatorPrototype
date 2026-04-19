@@ -44,7 +44,7 @@ public partial class BurningGroundEffect : Area2D
         }
         else
         {
-            if (body is Player) _playerInside = true;
+            if (body is Player player) { _playerInside = true; player.SetBurning(true); }
         }
     }
 
@@ -59,7 +59,11 @@ public partial class BurningGroundEffect : Area2D
         }
         else
         {
-            if (body is Player) _playerInside = false;
+            if (body is Player player)
+            {
+                _playerInside = false;
+                player.SetBurning(IsPlayerStillBurning());
+            }
         }
     }
 
@@ -93,6 +97,9 @@ public partial class BurningGroundEffect : Area2D
             if (IsInstanceValid(mob))
                 mob.SetBurning(IsStillBurning(mob));
         _mobsInside.Clear();
+
+        if (!IsPlayerOwned && _playerInside && PlayerRef is Player player)
+            player.SetBurning(IsPlayerStillBurning());
     }
 
     private bool IsStillBurning(MobActor mob)
@@ -101,6 +108,17 @@ public partial class BurningGroundEffect : Area2D
         {
             if (child == this) continue;
             if (child is BurningGroundEffect other && other._mobsInside.Contains(mob))
+                return true;
+        }
+        return false;
+    }
+
+    private bool IsPlayerStillBurning()
+    {
+        foreach (var child in GetParent().GetChildren())
+        {
+            if (child == this) continue;
+            if (child is BurningGroundEffect other && !other.IsPlayerOwned && other._playerInside)
                 return true;
         }
         return false;
