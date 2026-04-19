@@ -16,6 +16,14 @@ public partial class BaseEncounter : Node2D
 
     private PackedScene _fireboltScene;
 
+    // ── Player health ─────────────────────────────────────────────────────────
+
+    private HealthBar _playerHealthBar;
+
+    // ── Mob ───────────────────────────────────────────────────────────────────
+
+    private MobActor _mob;
+
     // ── Deck / queue ─────────────────────────────────────────────────────────
 
     private List<CardData>  _deckCards  = new();
@@ -31,6 +39,7 @@ public partial class BaseEncounter : Node2D
     private StyleBoxFlat _actionStylePressed;
     private ColorRect   _progressFill;
     private double      _elapsed       = 0.0;
+    private bool        _duplicateNextCard = false;
 
     private SkillData[]  _skills             = new SkillData[4];
     private double[]     _skillCooldowns     = new double[4];
@@ -49,10 +58,68 @@ public partial class BaseEncounter : Node2D
         DeckStore.LoadDecks();
         LoadDeckCards();
 
+        // Ensure player HP is initialised (fallback for testing without class select)
+        if (RunState.PlayerMaxHp <= 0)
+            RunState.PlayerMaxHp = RunState.PlayerCurrentHp = 100;
+
+        var player = GetNode<Node2D>("Player");
+
+        // Player health bar
+        _playerHealthBar          = new HealthBar();
+        _playerHealthBar.Position = new Vector2(0, -28);
+        _playerHealthBar.Init(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
+        player.AddChild(_playerHealthBar);
+
+        // Mob spawning
+        SpawnMob(player);
+
         var hud = new CanvasLayer();
         AddChild(hud);
         BuildCardHud(hud);
     }
+
+    // ── Mob spawning ──────────────────────────────────────────────────────────
+
+    private void SpawnMob(Node2D player)
+    {
+        MobStore.LoadMobs();
+        var entry = MobStore.Mobs.Find(m => m.Name == "Goblin Mage");
+        if (entry == null) return;
+
+        var deck = BuildDeckFromName(entry.DeckName);
+        _mob = new MobActor();
+        _mob.InitData(entry, deck, player, _fireboltScene);
+        AddChild(_mob);
+        _mob.GlobalPosition = new Vector2(0, -240);
+    }
+
+    private List<CardData> BuildDeckFromName(string deckName)
+    {
+        var result    = new List<CardData>();
+        var deckEntry = DeckStore.Decks.Find(d => d.Name == deckName);
+        if (deckEntry == null) return result;
+
+        var byId = new Dictionary<string, CardData>();
+        foreach (var c in DeckStore.AllCards) byId[c.Id] = c;
+
+        var sorted = new List<SlotEntry>(deckEntry.Slots);
+        sorted.Sort((a, b) => a.Slot.CompareTo(b.Slot));
+        foreach (var s in sorted)
+            if (byId.TryGetValue(s.CardId, out var card))
+                result.Add(card.Clone());
+
+        return result;
+    }
+
+    // ── Player hit callback (called by mob firebolt) ──────────────────────────
+
+    public void OnPlayerHit(int damage)
+    {
+        RunState.PlayerCurrentHp = Mathf.Max(0, RunState.PlayerCurrentHp - damage);
+        _playerHealthBar?.Update(RunState.PlayerCurrentHp, RunState.PlayerMaxHp);
+    }
+
+    // ── Draw ──────────────────────────────────────────────────────────────────
 
     public override void _Draw()
     {
@@ -73,34 +140,15 @@ public partial class BaseEncounter : Node2D
 
     private void LoadSkillsFromClass()
     {
-        if (ClassStore.ActiveClass == null) return;
-        foreach (var entry in ClassStore.ActiveClass.Skills)
-        {
-            if (entry.Slot < 0 || entry.Slot >= HudSlots) continue;
-            _skills[entry.Slot] = ClassStore.AllSkills.Find(s => s.Id == entry.SkillId);
-        }
+        for (int i = 0; i < HudSlots; i++)
+            _skills[i] = RunState.Skills[i];
     }
 
     private void LoadDeckCards()
     {
-        DeckEntry activeDeck = null;
-        if (ClassStore.ActiveClass != null && ClassStore.ActiveClass.DeckName.Length > 0)
-            activeDeck = DeckStore.Decks.Find(d => d.Name == ClassStore.ActiveClass.DeckName);
-        if (activeDeck == null) return;
-
-        var byId = new Dictionary<string, CardData>();
-        foreach (var c in DeckStore.AllCards)
-            byId[c.Id] = c;
-
-        var entries = new List<SlotEntry>(activeDeck.Slots);
-        entries.Sort((a, b) => a.Slot.CompareTo(b.Slot));
-
-        foreach (var entry in entries)
-        {
-            CardData card;
-            if (byId.TryGetValue(entry.CardId, out card))
-                _deckCards.Add(card);
-        }
+        if (RunState.Deck.Count == 0) return;
+        foreach (var card in RunState.Deck)
+            _deckCards.Add(card.Clone());
 
         RefillQueue();
 
@@ -208,20 +256,38 @@ public partial class BaseEncounter : Node2D
             _skillCooldownFills[idx].Size    = new Vector2(0f, _skillCooldownFills[idx].Size.Y);
             _skillCooldownFills[idx].Visible = true;
         }
+        ApplySkillEffect(_skills[idx]);
+    }
+
+    private void ApplySkillEffect(SkillData skill)
+    {
+        if (skill.Id == "duplicate")
+            _duplicateNextCard = true;
     }
 
     private void PlayCurrentCard()
     {
         var played = _slotCards[0];
 
-        // Shift slots 1-3 into slots 0-2.
+        if (_duplicateNextCard && played != null)
+        {
+            _duplicateNextCard = false;
+            var clone = played.Clone();
+            _deckCards.Add(clone);
+            _slotCards[0] = clone;
+            UpdateSlotVisual(_hudPanels[0], clone);
+            _elapsed = 0.0;
+            _progressFill.Size = new Vector2(0f, _progressFill.Size.Y);
+            SpawnCardEffect(played);
+            return;
+        }
+
         for (int i = 0; i < HudSlots - 1; i++)
         {
             _slotCards[i] = _slotCards[i + 1];
             UpdateSlotVisual(_hudPanels[i], _slotCards[i]);
         }
 
-        // Fill the last slot from the queue (wraps to deck start when empty).
         _slotCards[HudSlots - 1] = DequeueNext();
         UpdateSlotVisual(_hudPanels[HudSlots - 1], _slotCards[HudSlots - 1]);
 
@@ -234,10 +300,10 @@ public partial class BaseEncounter : Node2D
     private void SpawnCardEffect(CardData card)
     {
         if (card == null) return;
-        if (card.Id == "firebolt") SpawnFirebolt();
+        if (card.Id == "firebolt") SpawnPlayerFirebolt();
     }
 
-    private void SpawnFirebolt()
+    private void SpawnPlayerFirebolt()
     {
         var player   = GetNode<Node2D>("Player");
         var origin   = player.GlobalPosition;
@@ -245,6 +311,8 @@ public partial class BaseEncounter : Node2D
         var dir      = (mousePos - origin).Normalized();
 
         var bolt = _fireboltScene.Instantiate<Firebolt>();
+        bolt.IsPlayerOwned = true;
+        bolt.Damage        = 10;
         AddChild(bolt);
         bolt.Init(dir, origin);
     }
@@ -269,7 +337,6 @@ public partial class BaseEncounter : Node2D
         const int BarGap = 3;
         int barY = y + CardH + BarGap;
 
-        // Progress bar background (full width under slot 0).
         var progressBg = new ColorRect();
         progressBg.Position    = new Vector2(startX, barY);
         progressBg.Size        = new Vector2(CardW, BarH);
@@ -277,7 +344,6 @@ public partial class BaseEncounter : Node2D
         progressBg.MouseFilter = Control.MouseFilterEnum.Ignore;
         hud.AddChild(progressBg);
 
-        // Progress bar fill (grows right as card is used).
         _progressFill              = new ColorRect();
         _progressFill.Position     = new Vector2(startX, barY);
         _progressFill.Size         = new Vector2(0f, BarH);

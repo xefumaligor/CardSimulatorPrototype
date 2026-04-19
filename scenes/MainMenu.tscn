@@ -33,3 +33,9 @@ text = "Deck Management"
 
 [node name="BtnClassManagement" type="Button" parent="VBoxContainer"]
 text = "Class Management"
+
+[node name="BtnMobManagement" type="Button" parent="VBoxContainer"]
+text = "Mob Management"
+
+[node name="BtnEncounterManagement" type="Button" parent="VBoxContainer"]
+text = "Encounter Management"

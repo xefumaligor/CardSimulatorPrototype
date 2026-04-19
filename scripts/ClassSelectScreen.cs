@@ -102,7 +102,9 @@ public partial class ClassSelectScreen : Control
 
     private void OnClassSelected(int index)
     {
-        ClassStore.ActiveClass = ClassStore.Classes[index];
+        var chosen = ClassStore.Classes[index];
+        ClassStore.ActiveClass = chosen;
+        RunState.StartRun(chosen);
         GetTree().ChangeSceneToFile("res://scenes/BaseEncounter.tscn");
     }
 }

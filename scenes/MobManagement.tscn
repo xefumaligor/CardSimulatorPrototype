@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://220ihioo0rej"]
+
+[ext_resource type="Script" path="res://scripts/MobManagement.cs" id="1_mobmgmt"]
+
+[node name="MobManagement" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_mobmgmt")

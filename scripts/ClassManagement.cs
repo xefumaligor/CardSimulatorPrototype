@@ -16,13 +16,14 @@ public partial class ClassManagement : Control
     private SkillData[] _selectedSlots   = new SkillData[MaxSkills];
     private Panel[]     _selectedPanels  = new Panel[MaxSkills];
 
-    private SkillData   _heldSkill;
-    private Control     _heldSkillDisplay;
-    private Label       _heldSkillLabel;
-    private ColorRect   _heldSkillBg;
-    private Button      _saveButton;
-    private LineEdit    _classNameInput;
+    private SkillData    _heldSkill;
+    private Control      _heldSkillDisplay;
+    private Label        _heldSkillLabel;
+    private ColorRect    _heldSkillBg;
+    private Button       _saveButton;
+    private LineEdit     _classNameInput;
     private OptionButton _deckDropdown;
+    private SpinBox      _healthInput;
 
     public override void _Ready()
     {
@@ -129,6 +130,25 @@ public partial class ClassManagement : Control
         }
         AddChild(_deckDropdown);
         y += 42;
+
+        // Health row
+        var healthLabel = new Label();
+        healthLabel.Text     = "Health:";
+        healthLabel.Position = new Vector2(marginX, y + 6);
+        healthLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f));
+        AddChild(healthLabel);
+
+        _healthInput          = new SpinBox();
+        _healthInput.Position = new Vector2(marginX + 105, y);
+        _healthInput.Size     = new Vector2(120, 30);
+        _healthInput.MinValue = 1;
+        _healthInput.MaxValue = 9999;
+        _healthInput.Step     = 1;
+        _healthInput.Value    = ClassStore.EditingIndex >= 0
+            ? ClassStore.Classes[ClassStore.EditingIndex].Health
+            : 100;
+        AddChild(_healthInput);
+        y += 50;
 
         // Save / Cancel
         _saveButton = new Button();
@@ -390,6 +410,7 @@ public partial class ClassManagement : Control
         {
             Name     = name.Length > 0 ? name : ClassStore.NextClassName(),
             DeckName = deckName,
+            Health   = (int)_healthInput.Value,
             Skills   = new List<ClassSkillEntry>()
         };
 

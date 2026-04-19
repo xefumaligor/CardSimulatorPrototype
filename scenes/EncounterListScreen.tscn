@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://rwtalv47em12"]
+
+[ext_resource type="Script" path="res://scripts/EncounterListScreen.cs" id="1_enclist"]
+
+[node name="EncounterListScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_enclist")

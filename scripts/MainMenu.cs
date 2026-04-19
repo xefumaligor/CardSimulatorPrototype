@@ -9,6 +9,10 @@ public partial class MainMenu : Control
         GetNode<Button>("VBoxContainer/BtnDeckManagement").Pressed  += OnDeckManagementPressed;
         GetNode<Button>("VBoxContainer/BtnClassManagement").Pressed += () =>
             GetTree().ChangeSceneToFile("res://scenes/ClassListScreen.tscn");
+        GetNode<Button>("VBoxContainer/BtnMobManagement").Pressed += () =>
+            GetTree().ChangeSceneToFile("res://scenes/MobListScreen.tscn");
+        GetNode<Button>("VBoxContainer/BtnEncounterManagement").Pressed += () =>
+            GetTree().ChangeSceneToFile("res://scenes/EncounterListScreen.tscn");
     }
 
     private void OnWavesPressed()

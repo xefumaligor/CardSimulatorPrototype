@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://22yqm21m5q4d"]
+
+[ext_resource type="Script" path="res://scripts/MobListScreen.cs" id="1_moblist"]
+
+[node name="MobListScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_moblist")

@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cmumm0poq2at8"]
+
+[ext_resource type="Script" path="res://scripts/EncounterMobSelectScreen.cs" id="1_encmobsel"]
+
+[node name="EncounterMobSelectScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_encmobsel")

@@ -17,6 +17,8 @@ public class CardData
         Color   = color;
         UseTime = useTime;
     }
+
+    public CardData Clone() => new CardData(Id, Name, Text, Color, UseTime);
 }
 
 public class DeckEntry
