@@ -2,18 +2,34 @@ using Godot;
 
 public partial class Player : CharacterBody2D
 {
-    private const float Speed = 200f;
+    private const float Speed      = 200f;
+    private const float DashSpeed  = 1200f;
 
-    private bool _isBurning;
+    private bool    _isBurning;
+    private float   _dashTimer    = 0f;
+    private Vector2 _dashVelocity = Vector2.Zero;
 
     public bool IsBurning => _isBurning;
 
     public void SetBurning(bool burning) => _isBurning = burning;
 
+    public void StartDash(Vector2 direction, float distance)
+    {
+        _dashVelocity = direction * DashSpeed;
+        _dashTimer    = distance / DashSpeed;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
-        Vector2 dir = Vector2.Zero;
+        if (_dashTimer > 0f)
+        {
+            _dashTimer -= (float)delta;
+            Velocity    = _dashVelocity;
+            MoveAndSlide();
+            return;
+        }
 
+        Vector2 dir = Vector2.Zero;
         if (Input.IsKeyPressed(Key.W)) dir.Y -= 1;
         if (Input.IsKeyPressed(Key.S)) dir.Y += 1;
         if (Input.IsKeyPressed(Key.A)) dir.X -= 1;

@@ -499,8 +499,27 @@ public partial class BaseEncounter : Node2D
 
     private void ApplySkillEffect(SkillData skill)
     {
-        if (skill.Id == "duplicate")
-            _duplicateNextCard = true;
+        if (skill.Id == "duplicate") _duplicateNextCard = true;
+        if (skill.Id == "dash")      ApplyDash(skill);
+        if (skill.Id == "teleport")  ApplyTeleport();
+    }
+
+    private void ApplyDash(SkillData skill)
+    {
+        var player = GetNode<Player>("Player");
+        var toward = GetGlobalMousePosition() - player.GlobalPosition;
+        if (toward.LengthSquared() < 0.01f) return;
+        player.StartDash(toward.Normalized(), skill.GetValue(1, 200f));
+    }
+
+    private void ApplyTeleport()
+    {
+        var   player = GetNode<Player>("Player");
+        var   target = GetGlobalMousePosition();
+        const int Margin = 25;
+        float x = Mathf.Clamp(target.X, -_roomHalfX + Margin, _roomHalfX - Margin);
+        float y = Mathf.Clamp(target.Y, RoomOffsetY - _roomHalfY + Margin, RoomOffsetY + _roomHalfY - Margin);
+        player.GlobalPosition = new Vector2(x, y);
     }
 
     private void PlayCurrentCard()

@@ -12,8 +12,7 @@ public partial class SkillEditor : Control
 
     private static readonly Dictionary<string, (int idx, string label)[]> ValueDefs = new()
     {
-        // Add skill-specific value labels here as new skills are implemented.
-        // ["duplicate"] = new[] { (1, "Number of Copies") },
+        ["dash"] = new[] { (1, "Dash Distance (px)") },
     };
 
     public override void _Ready()
