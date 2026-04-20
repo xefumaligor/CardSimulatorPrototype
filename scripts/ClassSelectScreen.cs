@@ -119,6 +119,6 @@ public partial class ClassSelectScreen : Control
             RunState.CurrentEncounter = EncounterStore.Encounters.Find(e => e.Name == "Level1");
         }
 
-        GetTree().ChangeSceneToFile("res://scenes/BaseEncounter.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/EncounterPreviewScreen.tscn");
     }
 }

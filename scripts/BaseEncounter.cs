@@ -315,7 +315,7 @@ public partial class BaseEncounter : Node2D
         {
             RunState.CurrentEncounter = next;
             RunState.EncounterIndex   = nextIndex;
-            GetTree().ChangeSceneToFile("res://scenes/BaseEncounter.tscn");
+            GetTree().ChangeSceneToFile("res://scenes/EncounterPreviewScreen.tscn");
         }
         else
         {

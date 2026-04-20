@@ -9,7 +9,7 @@ public static class MobStore
         public List<MobEntry> Mobs { get; set; } = new();
     }
 
-    private const string MobsPath = "user://mobs.json";
+    private const string MobsPath = "res://data/mobs.json";
 
     public static List<MobEntry> Mobs         { get; } = new();
     public static int            EditingIndex { get; set; } = -1;
