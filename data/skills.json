@@ -1,8 +1,10 @@
 [
-  {"Id": "duplicate", "Name": "Duplicate",  "Description": "",                                    "Cooldown": 5.0,  "R": 0.53, "G": 0.81, "B": 0.98,
+  {"Id": "test",      "Name": "Test",      "Description": "",                                 "Cooldown": 5.0,  "R": 0.00, "G": 0.30, "B": 1.00,
    "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
-  {"Id": "dash",      "Name": "Dash",       "Description": "Dash towards the cursor.",            "Cooldown": 2.0,  "R": 0.30, "G": 0.65, "B": 1.00,
+  {"Id": "duplicate", "Name": "Duplicate", "Description": "",                                 "Cooldown": 10.0, "R": 0.53, "G": 0.81, "B": 0.98,
+   "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+  {"Id": "dash",      "Name": "Dash",      "Description": "Dash towards the cursor.",         "Cooldown": 2.0,  "R": 0.30, "G": 0.65, "B": 1.00,
    "Values": [200, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
-  {"Id": "teleport",  "Name": "Teleport",   "Description": "Teleport to the cursor position.",    "Cooldown": 15.0, "R": 0.70, "G": 0.30, "B": 1.00,
+  {"Id": "teleport",  "Name": "Teleport",  "Description": "Teleport to the cursor position.", "Cooldown": 15.0, "R": 0.70, "G": 0.30, "B": 1.00,
    "Values": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
 ]

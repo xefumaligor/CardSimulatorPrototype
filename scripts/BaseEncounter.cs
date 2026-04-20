@@ -36,7 +36,7 @@ public partial class BaseEncounter : Node2D
 
     private CardData[]  _slotCards     = new CardData[HudSlots];
     private Panel[]     _hudPanels     = new Panel[HudSlots];
-    private Button[]    _actionButtons      = new Button[4];
+    private Button[]    _actionButtons      = new Button[5];
     private StyleBoxFlat _actionStyleNormal;
     private StyleBoxFlat _actionStyleHover;
     private StyleBoxFlat _actionStylePressed;
@@ -58,9 +58,9 @@ public partial class BaseEncounter : Node2D
     private Label            _tooltipTags;
     private Label            _tooltipDesc;
 
-    private SkillData[]  _skills             = new SkillData[4];
-    private double[]     _skillCooldowns     = new double[4];
-    private ColorRect[]  _skillCooldownFills = new ColorRect[4];
+    private SkillData[]  _skills             = new SkillData[5];
+    private double[]     _skillCooldowns     = new double[5];
+    private ColorRect[]  _skillCooldownFills = new ColorRect[5];
 
     private CanvasLayer _hud;
     private bool        _encounterOver    = false;
@@ -357,7 +357,7 @@ public partial class BaseEncounter : Node2D
 
     private void LoadSkillsFromClass()
     {
-        for (int i = 0; i < HudSlots; i++)
+        for (int i = 0; i < _skills.Length; i++)
             _skills[i] = RunState.Skills[i];
     }
 
@@ -395,11 +395,12 @@ public partial class BaseEncounter : Node2D
 
         int idx = key.Keycode switch
         {
-            Key.Key1 => 0,
-            Key.Key2 => 1,
-            Key.Key3 => 2,
-            Key.Key4 => 3,
-            _        => -1,
+            Key.Key1   => 0,
+            Key.Key2   => 1,
+            Key.Key3   => 2,
+            Key.Key4   => 3,
+            Key.Space  => 4,
+            _          => -1,
         };
 
         if (idx < 0 || _encounterOver) return;
@@ -463,7 +464,7 @@ public partial class BaseEncounter : Node2D
                 PlayCurrentCard();
         }
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < _skills.Length; i++)
         {
             if (_skillCooldowns[i] <= 0.0) continue;
             _skillCooldowns[i] -= delta;
@@ -1004,7 +1005,7 @@ public partial class BaseEncounter : Node2D
         _actionStylePressed.CornerRadiusTopLeft = _actionStylePressed.CornerRadiusTopRight =
         _actionStylePressed.CornerRadiusBottomLeft = _actionStylePressed.CornerRadiusBottomRight = 3;
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < _skills.Length; i++)
         {
             int capturedI = i;
 
@@ -1021,9 +1022,9 @@ public partial class BaseEncounter : Node2D
             btn.MouseExited   += HideTooltip;
 
             var num = new Label();
-            num.Text        = (i + 1).ToString();
+            num.Text        = i < 4 ? (i + 1).ToString() : "Spc";
             num.Position    = new Vector2(CardW - 14, CardH - 17);
-            num.Size        = new Vector2(12, 14);
+            num.Size        = new Vector2(i < 4 ? 12 : 22, 14);
             num.AddThemeColorOverride("font_color",   new Color(0.55f, 0.55f, 0.65f));
             num.AddThemeFontSizeOverride("font_size", 10);
             num.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -1037,7 +1038,7 @@ public partial class BaseEncounter : Node2D
         const int BarGap = 3;
         int barY = y + CardH + BarGap;
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < _skills.Length; i++)
         {
             float bx = StartX + i * (CardW + Gap);
 

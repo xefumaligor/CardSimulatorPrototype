@@ -9,7 +9,7 @@ public static class EncounterStore
         public List<EncounterEntry> Encounters { get; set; } = new();
     }
 
-    private const string EncountersPath = "user://encounters.json";
+    private const string EncountersPath = "res://data/encounters.json";
 
     public static List<EncounterEntry> Encounters        { get; } = new();
     public static int                  EditingIndex      { get; set; } = -1;

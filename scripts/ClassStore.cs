@@ -21,9 +21,8 @@ public static class ClassStore
         public List<ClassEntry> Classes { get; set; } = new();
     }
 
-    private const string SkillsPath          = "res://data/skills.json";
-    private const string SkillsOverridePath  = "user://skills.json";
-    private const string ClassesPath         = "user://classes.json";
+    private const string SkillsPath  = "res://data/skills.json";
+    private const string ClassesPath = "res://data/classes.json";
 
     public static List<SkillData>  AllSkills     { get; } = new();
     public static List<ClassEntry> Classes       { get; } = new();
@@ -34,26 +33,15 @@ public static class ClassStore
     public static void EnsureSkillsLoaded()
     {
         if (AllSkills.Count > 0) return;
-
-        var merged = new Dictionary<string, SkillDef>();
-        LoadSkillDefs(SkillsPath, merged);
-        if (FileAccess.FileExists(SkillsOverridePath))
-            LoadSkillDefs(SkillsOverridePath, merged);
-
-        foreach (var d in merged.Values)
-            AllSkills.Add(new SkillData(d.Id, d.Name, d.Description ?? "", d.Cooldown, new Color(d.R, d.G, d.B), d.Values));
-    }
-
-    private static void LoadSkillDefs(string path, Dictionary<string, SkillDef> target)
-    {
-        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+        using var file = FileAccess.Open(SkillsPath, FileAccess.ModeFlags.Read);
         if (file == null) return;
         try
         {
             var defs = JsonSerializer.Deserialize<List<SkillDef>>(file.GetAsText());
             if (defs == null) return;
             foreach (var d in defs)
-                if (d.Id != null) target[d.Id] = d;
+                if (d.Id != null)
+                    AllSkills.Add(new SkillData(d.Id, d.Name, d.Description ?? "", d.Cooldown, new Color(d.R, d.G, d.B), d.Values));
         }
         catch { }
     }
@@ -73,7 +61,7 @@ public static class ClassStore
                 B           = s.Color.B,
                 Values      = (float[])s.Values.Clone()
             });
-        using var file = FileAccess.Open(SkillsOverridePath, FileAccess.ModeFlags.Write);
+        using var file = FileAccess.Open(SkillsPath, FileAccess.ModeFlags.Write);
         file?.StoreString(JsonSerializer.Serialize(defs));
     }
 

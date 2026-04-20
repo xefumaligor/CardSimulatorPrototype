@@ -9,7 +9,7 @@ public partial class ClassManagement : Control
     private const int CardW     = 75;
     private const int CardH     = 80;
     private const int Gap       = 5;
-    private const int MaxSkills = 4;
+    private const int MaxSkills = 5;
 
     private SkillData[] _catalogueSlots  = new SkillData[Cols * Rows];
     private Panel[]     _cataloguePanels = new Panel[Cols * Rows];

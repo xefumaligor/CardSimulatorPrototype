@@ -23,10 +23,9 @@ public static class DeckStore
         public List<DeckEntry> Decks { get; set; } = new();
     }
 
-    private const string CardsPath          = "res://data/cards.json";
-    private const string CardsOverridePath  = "user://cards.json";
-    private const string DecksPath          = "user://decks.json";
-    private const string TagsPath           = "res://data/tags.json";
+    private const string CardsPath = "res://data/cards.json";
+    private const string DecksPath = "res://data/decks.json";
+    private const string TagsPath  = "res://data/tags.json";
 
     public static List<CardData>  AllCards     { get; } = new();
     public static List<DeckEntry> Decks        { get; } = new();
@@ -44,30 +43,15 @@ public static class DeckStore
     public static void EnsureCardsLoaded()
     {
         if (AllCards.Count > 0) return;
-
-        var merged = new Dictionary<string, CardDef>();
-
-        // Load base definitions first.
-        LoadCardDefs(CardsPath, merged);
-
-        // User overrides win; new user-created cards are also added.
-        if (FileAccess.FileExists(CardsOverridePath))
-            LoadCardDefs(CardsOverridePath, merged);
-
-        foreach (var d in merged.Values)
-            AllCards.Add(new CardData(d.Id, d.Name, d.Text ?? "", new Color(d.R, d.G, d.B), d.UseTime, d.Tags ?? new(), d.Values));
-    }
-
-    private static void LoadCardDefs(string path, Dictionary<string, CardDef> target)
-    {
-        using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+        using var file = FileAccess.Open(CardsPath, FileAccess.ModeFlags.Read);
         if (file == null) return;
         try
         {
             var defs = JsonSerializer.Deserialize<List<CardDef>>(file.GetAsText());
             if (defs == null) return;
             foreach (var d in defs)
-                if (d.Id != null) target[d.Id] = d;
+                if (d.Id != null)
+                    AllCards.Add(new CardData(d.Id, d.Name, d.Text ?? "", new Color(d.R, d.G, d.B), d.UseTime, d.Tags ?? new(), d.Values));
         }
         catch { }
     }
@@ -101,7 +85,7 @@ public static class DeckStore
                 Tags    = new List<string>(c.Tags),
                 Values  = (float[])c.Values.Clone()
             });
-        using var file = FileAccess.Open(CardsOverridePath, FileAccess.ModeFlags.Write);
+        using var file = FileAccess.Open(CardsPath, FileAccess.ModeFlags.Write);
         file?.StoreString(JsonSerializer.Serialize(defs));
     }
 
