@@ -508,9 +508,7 @@ public partial class BaseEncounter : Node2D
     private void ApplyDash(SkillData skill)
     {
         var player = GetNode<Player>("Player");
-        var toward = GetGlobalMousePosition() - player.GlobalPosition;
-        if (toward.LengthSquared() < 0.01f) return;
-        player.StartDash(toward.Normalized(), skill.GetValue(1, 200f));
+        player.StartDash(player.LastMoveDirection, skill.GetValue(1, 200f));
     }
 
     private void ApplyTeleport()

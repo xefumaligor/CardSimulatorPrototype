@@ -33,6 +33,9 @@ public partial class MobActor : CharacterBody2D
     {
         float half = Mathf.Max(1, _entry?.Size ?? 30) / 2f;
 
+        CollisionLayer = 2;
+        CollisionMask  = 1;
+
         // Collision shape
         var collision   = new CollisionShape2D();
         var shape       = new RectangleShape2D();
